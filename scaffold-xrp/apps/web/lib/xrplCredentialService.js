@@ -11,6 +11,8 @@ import { ISSUER_ADDRESS, CREDENTIAL_TYPES } from "./credentials";
 
 // Client XRPL singleton
 let xrplClient = null;
+let isConnecting = false;
+let connectionPromise = null;
 
 // Activer les logs de debug
 const DEBUG = true;
@@ -23,14 +25,48 @@ function log(...args) {
  * @returns {Promise<Client>} Client XRPL connecté
  */
 async function getClient() {
+  // Si déjà connecté, retourner le client
   if (xrplClient && xrplClient.isConnected()) {
+    log("Using existing connected client");
     return xrplClient;
   }
 
+  // Si une connexion est en cours, attendre
+  if (isConnecting && connectionPromise) {
+    log("Connection in progress, waiting...");
+    await connectionPromise;
+    return xrplClient;
+  }
+
+  // Nouvelle connexion
+  isConnecting = true;
   log("Connexion au réseau:", DEFAULT_NETWORK.wss);
-  xrplClient = new Client(DEFAULT_NETWORK.wss);
-  await xrplClient.connect();
-  log("✓ Connecté au réseau XRPL");
+  
+  connectionPromise = (async () => {
+    try {
+      // Fermer l'ancien client si existant
+      if (xrplClient) {
+        try {
+          await xrplClient.disconnect();
+        } catch (e) {
+          // Ignorer les erreurs de déconnexion
+        }
+      }
+      
+      xrplClient = new Client(DEFAULT_NETWORK.wss);
+      await xrplClient.connect();
+      log("✓ Connecté au réseau XRPL");
+      return xrplClient;
+    } catch (error) {
+      log("❌ Erreur de connexion:", error);
+      xrplClient = null;
+      throw error;
+    } finally {
+      isConnecting = false;
+    }
+  })();
+
+  await connectionPromise;
   return xrplClient;
 }
 

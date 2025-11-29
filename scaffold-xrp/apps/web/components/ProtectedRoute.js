@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCredentialContext } from "./providers/CredentialProvider";
 import { CREDENTIAL_INFO, CREDENTIAL_TYPES, ISSUER_ADDRESS } from "../lib/credentials";
@@ -153,8 +154,18 @@ function WalletNotConnected() {
 /**
  * Composant d'accès non autorisé
  */
-function UnauthorizedContent({ credentialInfo, credentialType, walletAddress, accessMap, error }) {
+function UnauthorizedContent({ credentialInfo, credentialType, walletAddress, accessMap, error, onRetry }) {
   const router = useRouter();
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    if (onRetry) {
+      await onRetry();
+    }
+    // Force page reload to re-trigger everything
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] px-4">
@@ -173,13 +184,26 @@ function UnauthorizedContent({ credentialInfo, credentialType, walletAddress, ac
             Vous n'avez pas le credential nécessaire pour accéder à cette section.
           </p>
 
+          {/* Erreur avec bouton Réessayer */}
+          {error && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 mb-6">
+              <p className="text-red-400 text-sm mb-3">⚠️ Erreur de vérification: {error}</p>
+              <button
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isRetrying ? "Vérification..." : "🔄 Réessayer"}
+              </button>
+            </div>
+          )}
+
           {/* Debug Info */}
-          <div className="p-4 rounded-xl bg-black/50 border border-white/10 mb-6 text-left text-xs font-mono">
+          <div className="p-4 rounded-xl bg-black/50 border border-white/10 mb-6 text-left text-xs font-mono overflow-x-auto">
             <p className="text-amber-400 mb-2">Debug Info:</p>
             <p className="text-white/70">Wallet: {walletAddress || 'Non connecté'}</p>
             <p className="text-white/70">Credential requis: {credentialType}</p>
-            <p className="text-white/70">AccessMap: {JSON.stringify(accessMap, null, 2)}</p>
-            {error && <p className="text-red-400">Erreur: {error}</p>}
+            <p className="text-white/70">AccessMap: {JSON.stringify(accessMap)}</p>
           </div>
 
           {/* Credential requis */}
@@ -212,18 +236,19 @@ function UnauthorizedContent({ credentialInfo, credentialType, walletAddress, ac
           </div>
 
           {/* Boutons */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center flex-wrap">
+            <button
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="px-6 py-3 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+            >
+              {isRetrying ? "Vérification..." : "🔄 Revérifier"}
+            </button>
             <button
               onClick={() => router.push("/")}
               className="px-6 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors"
             >
               Retour à l'accueil
-            </button>
-            <button
-              onClick={() => router.push("/contact")}
-              className="px-6 py-3 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-            >
-              Nous contacter
             </button>
           </div>
         </div>

@@ -22,6 +22,17 @@ function log(...args) {
   if (DEBUG) console.log("[CredentialProvider]", ...args);
 }
 
+// Cache global des credentials (survit aux re-renders)
+let credentialsCache = {
+  walletAddress: null,
+  accessMap: null,
+  credentials: [],
+  timestamp: 0,
+};
+
+// Durée de validité du cache (5 minutes)
+const CACHE_DURATION = 5 * 60 * 1000;
+
 // Contexte des credentials
 const CredentialContext = createContext(undefined);
 
@@ -42,12 +53,13 @@ export function CredentialProvider({ children }) {
     [CREDENTIAL_TYPES.LABO]: false,
     [CREDENTIAL_TYPES.TRANSPORTER]: false,
   });
-  const [isLoading, setIsLoading] = useState(true); // Commence en loading
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Ref pour éviter les doubles appels
+  // Ref pour éviter les doubles appels (local au composant)
   const fetchingRef = useRef(false);
+  const lastFetchedAddressRef = useRef(null);
 
   // Adresse du wallet
   const walletAddress = accountInfo?.address || null;
@@ -55,21 +67,15 @@ export function CredentialProvider({ children }) {
   log("=== Render ===");
   log("isConnected:", isConnected);
   log("walletAddress:", walletAddress);
-  log("accountInfo:", accountInfo);
   log("isLoading:", isLoading);
   log("isInitialized:", isInitialized);
-  log("ISSUER_ADDRESS:", ISSUER_ADDRESS);
-  log("accessMap:", accessMap);
+  log("cache:", credentialsCache);
 
   /**
    * Récupère les credentials depuis le ledger XRPL
    */
-  const fetchCredentials = useCallback(async () => {
-    // Éviter les appels multiples simultanés
-    if (fetchingRef.current) {
-      log("Already fetching, skipping...");
-      return;
-    }
+  const fetchCredentials = useCallback(async (forceRefresh = false) => {
+    log("fetchCredentials called - walletAddress:", walletAddress, "forceRefresh:", forceRefresh);
     
     if (!walletAddress) {
       log("No wallet address, resetting credentials");
@@ -85,41 +91,94 @@ export function CredentialProvider({ children }) {
       return;
     }
 
+    // Vérifier le cache global
+    const now = Date.now();
+    const cacheValid = 
+      credentialsCache.walletAddress === walletAddress &&
+      credentialsCache.accessMap &&
+      (now - credentialsCache.timestamp) < CACHE_DURATION;
+    
+    if (cacheValid && !forceRefresh) {
+      log("✓ Using cached credentials for", walletAddress);
+      setCredentials(credentialsCache.credentials);
+      setAccessMap(credentialsCache.accessMap);
+      setIsLoading(false);
+      setIsInitialized(true);
+      return;
+    }
+
+    // Éviter les appels multiples simultanés pour la même adresse
+    if (fetchingRef.current && lastFetchedAddressRef.current === walletAddress) {
+      log("Already fetching for this address, skipping...");
+      return;
+    }
+
     fetchingRef.current = true;
+    lastFetchedAddressRef.current = walletAddress;
     setIsLoading(true);
     setError(null);
 
     log("🔄 Fetching credentials for wallet:", walletAddress);
     log("Using ISSUER_ADDRESS:", ISSUER_ADDRESS);
 
-    try {
-      const [credentialsResult, accessResult] = await Promise.all([
-        getUserCredentials(walletAddress),
-        checkAllCredentials(walletAddress),
-      ]);
+    // Retry logic
+    const maxRetries = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        log(`Attempt ${attempt}/${maxRetries}...`);
+        
+        // Petit délai entre les tentatives
+        if (attempt > 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+        
+        const [credentialsResult, accessResult] = await Promise.all([
+          getUserCredentials(walletAddress),
+          checkAllCredentials(walletAddress),
+        ]);
 
-      log("📦 getUserCredentials result:", credentialsResult);
-      log("📦 checkAllCredentials result:", accessResult);
+        log("📦 getUserCredentials result:", credentialsResult);
+        log("📦 checkAllCredentials result:", accessResult);
 
-      if (credentialsResult.error) {
-        log("❌ Error from getUserCredentials:", credentialsResult.error);
-        setError(credentialsResult.error);
+        if (credentialsResult.error) {
+          log("❌ Error from getUserCredentials:", credentialsResult.error);
+          setError(credentialsResult.error);
+        }
+
+        // Mettre à jour le cache global
+        credentialsCache = {
+          walletAddress,
+          accessMap: accessResult,
+          credentials: credentialsResult.credentials,
+          timestamp: Date.now(),
+        };
+
+        setCredentials(credentialsResult.credentials);
+        setAccessMap(accessResult);
+        setError(null);
+        
+        log("✅ Credentials set. Access map:", accessResult);
+        
+        // Succès, sortir de la boucle
+        break;
+        
+      } catch (err) {
+        log(`❌ Attempt ${attempt} failed:`, err.message);
+        lastError = err;
+        
+        if (attempt === maxRetries) {
+          console.error("CredentialProvider: All retries failed", err);
+          setError(err.message);
+        }
       }
-
-      setCredentials(credentialsResult.credentials);
-      setAccessMap(accessResult);
-      
-      log("✅ Credentials set. Access map:", accessResult);
-    } catch (err) {
-      log("❌ Exception in fetchCredentials:", err);
-      console.error("CredentialProvider: Erreur", err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-      setIsInitialized(true);
-      fetchingRef.current = false;
-      log("✓ Fetch complete, isLoading=false, isInitialized=true");
     }
+    
+    setIsLoading(false);
+    setIsInitialized(true);
+    fetchingRef.current = false;
+    log("✓ Fetch complete, isLoading=false, isInitialized=true");
   }, [walletAddress]);
 
   /**
@@ -127,7 +186,9 @@ export function CredentialProvider({ children }) {
    */
   const hasCredential = useCallback(
     (credentialType) => {
-      return accessMap[credentialType] === true;
+      const result = accessMap[credentialType] === true;
+      log("hasCredential check:", credentialType, "=", result);
+      return result;
     },
     [accessMap]
   );
@@ -160,51 +221,48 @@ export function CredentialProvider({ children }) {
     return sections;
   }, [accessMap]);
 
-  // Attendre l'initialisation du wallet manager avant de marquer comme initialisé
+  // Effet principal : fetch credentials quand wallet change
   useEffect(() => {
-    log("Init effect - walletManager:", !!walletManager, "isConnected:", isConnected, "walletAddress:", walletAddress);
-    
-    // Si on a déjà une adresse (restaurée de la session), on fetch immédiatement
-    if (walletAddress && !fetchingRef.current && !isInitialized) {
-      log("Have wallet address from session, fetching credentials...");
-      fetchCredentials();
-      return;
-    }
-    
-    // Si pas de wallet manager, attendre un peu puis marquer comme initialisé sans connexion
-    if (!walletManager) {
-      const timeout = setTimeout(() => {
-        if (!walletManager && !isConnected && !walletAddress) {
-          log("No wallet manager and no session, marking as initialized");
-          setIsLoading(false);
-          setIsInitialized(true);
-        }
-      }, 2000); // Attendre 2 secondes max pour le wallet manager
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [walletManager, isConnected, walletAddress, isInitialized, fetchCredentials]);
-
-  // Récupérer les credentials quand le wallet change
-  useEffect(() => {
-    log("Wallet change effect - isConnected:", isConnected, "walletAddress:", walletAddress, "isInitialized:", isInitialized);
+    log("Main effect - walletAddress:", walletAddress, "isInitialized:", isInitialized);
     
     if (walletAddress) {
-      log("Wallet address present, fetching credentials...");
+      // On a une adresse, fetch les credentials
       fetchCredentials();
-    } else if (!isConnected && !walletAddress && isInitialized) {
-      // Reset complet à la déconnexion (mais seulement si déjà initialisé)
-      log("Wallet disconnected, resetting state");
-      setCredentials([]);
-      setAccessMap({
-        [CREDENTIAL_TYPES.BUYER]: false,
-        [CREDENTIAL_TYPES.SELLER]: false,
-        [CREDENTIAL_TYPES.LABO]: false,
-        [CREDENTIAL_TYPES.TRANSPORTER]: false,
-      });
-      setError(null);
+    } else {
+      // Pas d'adresse
+      if (isConnected === false) {
+        // Explicitement déconnecté, reset tout
+        log("Wallet explicitly disconnected, resetting");
+        setCredentials([]);
+        setAccessMap({
+          [CREDENTIAL_TYPES.BUYER]: false,
+          [CREDENTIAL_TYPES.SELLER]: false,
+          [CREDENTIAL_TYPES.LABO]: false,
+          [CREDENTIAL_TYPES.TRANSPORTER]: false,
+        });
+        setError(null);
+        setIsLoading(false);
+        setIsInitialized(true);
+        // Vider le cache
+        credentialsCache = {
+          walletAddress: null,
+          accessMap: null,
+          credentials: [],
+          timestamp: 0,
+        };
+      } else {
+        // Pas encore d'adresse, attendre un peu
+        const timeout = setTimeout(() => {
+          if (!walletAddress) {
+            log("Timeout: still no wallet address, marking initialized");
+            setIsLoading(false);
+            setIsInitialized(true);
+          }
+        }, 1500);
+        return () => clearTimeout(timeout);
+      }
     }
-  }, [isConnected, walletAddress, fetchCredentials, isInitialized]);
+  }, [walletAddress, isConnected, fetchCredentials]);
 
   // Cleanup
   useEffect(() => {
@@ -227,7 +285,7 @@ export function CredentialProvider({ children }) {
     hasCredential,
     hasAccess,
     getAccessibleSections,
-    refreshCredentials: fetchCredentials,
+    refreshCredentials: () => fetchCredentials(true), // Force refresh
     
     // Constantes
     CREDENTIAL_TYPES,
