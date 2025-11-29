@@ -25,4 +25,4 @@ export const NETWORKS = {
   },
 };
 
-export const DEFAULT_NETWORK = NETWORKS.ALPHANET;
+export const DEFAULT_NETWORK = NETWORKS.TESTNET;

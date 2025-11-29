@@ -5,8 +5,9 @@ import GridScan from "../../components/landing/GridScan";
 import CardNav from "../../components/landing/CardNav";
 import Footer from "../../components/landing/Footer";
 import WalletButton from "../../components/landing/WalletButton";
+import ProtectedRoute from "../../components/ProtectedRoute";
 
-export default function SellerPage() {
+function SellerContent() {
   const navItems = [
     {
       label: "Seller",
@@ -170,5 +171,13 @@ export default function SellerPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function SellerPage() {
+  return (
+    <ProtectedRoute requiredCredential="SELLER">
+      <SellerContent />
+    </ProtectedRoute>
   );
 }

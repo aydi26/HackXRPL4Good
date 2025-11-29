@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWallet } from "./providers/WalletProvider";
-import { useWalletConnector } from "../hooks/useWalletConnector";
+
+// Debug
+const DEBUG = true;
+function log(...args) {
+  if (DEBUG) console.log("[WalletConnectorComponent]", ...args);
+}
+
+// Tracker global pour éviter les setups multiples
+let connectorSetupDone = false;
 
 const THEMES = {
   dark: {
@@ -40,23 +48,29 @@ const THEMES = {
 };
 
 export function WalletConnector() {
-  const { walletManager } = useWallet();
-  const walletConnectorRef = useWalletConnector(walletManager);
+  const { walletManager, addEvent, showStatus } = useWallet();
+  const walletConnectorRef = useRef(null);
   const [currentTheme] = useState("emerald");
   const [isClient, setIsClient] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const localSetupRef = useRef(false);
 
+  // Register web component on client
   useEffect(() => {
     setIsClient(true);
 
-    // Register the web component
     const registerWebComponent = async () => {
       try {
+        log("Registering web component...");
         const { WalletConnectorElement } = await import("xrpl-connect");
 
-        // Define the custom element if not already defined
         if (!customElements.get("xrpl-wallet-connector")) {
           customElements.define("xrpl-wallet-connector", WalletConnectorElement);
+          log("✓ Web component registered");
+        } else {
+          log("Web component already registered");
         }
+        setIsReady(true);
       } catch (error) {
         console.error("Failed to register wallet connector:", error);
       }
@@ -65,9 +79,83 @@ export function WalletConnector() {
     registerWebComponent();
   }, []);
 
+  // Setup wallet manager on connector when both are ready
+  useEffect(() => {
+    log("Setup effect - isReady:", isReady, "walletManager:", !!walletManager, "ref:", !!walletConnectorRef.current, "localSetup:", localSetupRef.current);
+    
+    if (!isReady || !walletManager || !walletConnectorRef.current) {
+      return;
+    }
+    
+    // Éviter les setups multiples pour ce composant
+    if (localSetupRef.current) {
+      log("Local setup already done");
+      return;
+    }
+
+    const setupConnector = async () => {
+      log("Setting up connector with wallet manager...");
+      
+      await customElements.whenDefined("xrpl-wallet-connector");
+      
+      // Attendre que l'élément soit complètement initialisé
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const element = walletConnectorRef.current;
+      
+      if (element && typeof element.setWalletManager === "function") {
+        log("Calling setWalletManager on element");
+        element.setWalletManager(walletManager);
+        localSetupRef.current = true;
+
+        // Event listeners - seulement si pas déjà fait globalement
+        if (!connectorSetupDone) {
+          const handleConnecting = (e) => {
+            log("Event: connecting", e.detail);
+            showStatus(`Connexion à ${e.detail?.walletId || 'wallet'}...`, "info");
+          };
+
+          const handleConnected = (e) => {
+            log("Event: connected", e.detail);
+            showStatus("Connecté avec succès!", "success");
+            addEvent("Connected", e.detail);
+          };
+
+          const handleError = (e) => {
+            log("Event: error", e.detail);
+            showStatus(`Échec de connexion: ${e.detail?.error?.message || 'Erreur inconnue'}`, "error");
+            addEvent("Error", e.detail);
+          };
+
+          const handleDisconnected = (e) => {
+            log("Event: disconnected");
+            addEvent("Disconnected", null);
+          };
+
+          element.addEventListener("connecting", handleConnecting);
+          element.addEventListener("connected", handleConnected);
+          element.addEventListener("error", handleError);
+          element.addEventListener("disconnected", handleDisconnected);
+          
+          connectorSetupDone = true;
+          log("✓ Connector event listeners attached");
+        }
+
+        log("✓ Connector setup complete with wallet manager");
+      } else {
+        log("⚠ setWalletManager not available, element:", element);
+        log("Element methods:", element ? Object.keys(element) : 'null');
+      }
+    };
+
+    setupConnector();
+  }, [isReady, walletManager, addEvent, showStatus]);
+
   if (!isClient) {
     return null;
   }
+
+  log("Rendering - isReady:", isReady, "walletManager:", !!walletManager);
 
   return (
     <xrpl-wallet-connector
@@ -79,7 +167,7 @@ export function WalletConnector() {
         "--xc-border-radius": "12px",
         "--xc-modal-box-shadow": "0 10px 40px rgba(0, 0, 0, 0.3)",
       }}
-      primary-wallet="xaman"
+      primary-wallet="gem"
     />
   );
 }

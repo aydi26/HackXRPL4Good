@@ -1,11 +1,10 @@
 "use client";
 
 import { WalletConnector } from "../WalletConnector";
-import { useWalletManager } from "../../hooks/useWalletManager";
 
 export function WalletButton() {
-  // Initialize the wallet manager - this is required for WalletConnector to work
-  useWalletManager();
+  // Le WalletManager est maintenant initialisé dans le layout via WalletInitializer
+  // Plus besoin de l'appeler ici
 
   return (
     <div className="wallet-button-wrapper">
