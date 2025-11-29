@@ -8,7 +8,7 @@ Producteur -----"J'achète les XT de pommes" -----> marketplace
 
 Agriculteur : Chiffrement de la Certif
 Nous : creation masterkey + chiffrement de la public key + envoie de la clé chiffré
-Agriculteur : Mint du NFT (avec dans les données clé pivré chiffrée + Certif chiffrée) + envoie au producteur
+Agriculteur : Mint du NFT (avec dans les données clé publique chiffrée + Certif chiffrée) + envoie au producteur
 Nous : envoie Master key au producteur
 
 
