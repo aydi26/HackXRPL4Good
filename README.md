@@ -118,3 +118,5 @@ Le système repose sur 3 piliers :
 4.  **UX Fluide :** L'utilisateur ne voit rien de la crypto, il voit juste "Certifié" ou "Bloqué".
 
 C'est ton plan de bataille. Bonne chance à l'équipe !
+
+test
