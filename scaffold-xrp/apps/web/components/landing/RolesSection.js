@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import CardSwap, { Card } from './CardSwap';
+import ScrollReveal from './ScrollReveal';
 
 const roles = [
   {
@@ -45,6 +46,25 @@ const roles = [
   }
 ];
 
+const steps = [
+  {
+    title: 'Connect your XRPL wallet',
+    description: 'Use Xaman, Crossmark or any XRPL-compatible wallet'
+  },
+  {
+    title: 'Verify your identity',
+    description: 'Submit your professional documents (license, business ID, etc.)'
+  },
+  {
+    title: 'Receive your on-chain credential',
+    description: 'A certification NFT is minted and linked to your address'
+  },
+  {
+    title: 'Start using the platform',
+    description: 'Create, buy or transport certified products'
+  }
+];
+
 const CheckIcon = () => (
   <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -52,7 +72,7 @@ const CheckIcon = () => (
 );
 
 const ShieldIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
   </svg>
 );
@@ -113,47 +133,35 @@ export default function RolesSection() {
 
             {/* How to join */}
             <motion.div variants={itemVariants} className="space-y-6">
-              <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+              <h3 className="text-2xl font-bold text-white flex items-center gap-3">
                 <ShieldIcon />
                 How to become a certified actor?
               </h3>
 
-              <div className="space-y-4">
-                {[
-                  {
-                    step: '1',
-                    title: 'Connect your XRPL wallet',
-                    description: 'Use Xaman, Crossmark or any XRPL-compatible wallet'
-                  },
-                  {
-                    step: '2',
-                    title: 'Verify your identity',
-                    description: 'Submit your professional documents (license, business ID, etc.)'
-                  },
-                  {
-                    step: '3',
-                    title: 'Receive your on-chain credential',
-                    description: 'A certification NFT is minted and linked to your address'
-                  },
-                  {
-                    step: '4',
-                    title: 'Start using the platform',
-                    description: 'Create, buy or transport certified products'
-                  }
-                ].map((item, idx) => (
-                  <motion.div
-                    key={idx}
-                    variants={itemVariants}
-                    className="flex gap-4 p-4 group"
-                  >
-                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-400 font-bold group-hover:scale-110 transition-transform">
-                      {item.step}
-                    </div>
-                    <div>
-                      <h4 className="text-white font-semibold mb-1">{item.title}</h4>
-                      <p className="text-white/60 text-sm">{item.description}</p>
-                    </div>
-                  </motion.div>
+              <div className="space-y-6">
+                {steps.map((item, idx) => (
+                  <div key={idx} className="pl-2">
+                    <ScrollReveal
+                      baseOpacity={0}
+                      enableBlur={true}
+                      baseRotation={3}
+                      blurStrength={8}
+                      containerClassName=""
+                      textClassName="text-white font-semibold text-lg"
+                    >
+                      {item.title}
+                    </ScrollReveal>
+                    <ScrollReveal
+                      baseOpacity={0}
+                      enableBlur={true}
+                      baseRotation={2}
+                      blurStrength={6}
+                      containerClassName="mt-1"
+                      textClassName="text-white/50 text-sm"
+                    >
+                      {item.description}
+                    </ScrollReveal>
+                  </div>
                 ))}
               </div>
 

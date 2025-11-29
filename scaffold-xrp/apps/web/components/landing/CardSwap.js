@@ -82,6 +82,7 @@ const CardSwap = ({
   const tlRef = useRef(null);
   const intervalRef = useRef();
   const container = useRef(null);
+  const swapFnRef = useRef(null);
 
   useEffect(() => {
     const total = refs.length;
@@ -89,6 +90,7 @@ const CardSwap = ({
 
     const swap = () => {
       if (order.current.length < 2) return;
+      if (tlRef.current?.isActive()) return;
 
       const [front, ...rest] = order.current;
       const elFront = refs[front].current;
@@ -145,6 +147,8 @@ const CardSwap = ({
       });
     };
 
+    swapFnRef.current = swap;
+
     swap();
     intervalRef.current = window.setInterval(swap, delay);
 
@@ -169,15 +173,25 @@ const CardSwap = ({
     return () => clearInterval(intervalRef.current);
   }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing]);
 
+  const handleCardClick = (i, e) => {
+    // Trigger swap animation on click
+    if (swapFnRef.current && !tlRef.current?.isActive()) {
+      clearInterval(intervalRef.current);
+      swapFnRef.current();
+      intervalRef.current = window.setInterval(swapFnRef.current, delay);
+    }
+    onCardClick?.(i);
+  };
+
   const rendered = childArr.map((child, i) =>
     isValidElement(child)
       ? cloneElement(child, {
           key: i,
           ref: refs[i],
-          style: { width, height, ...(child.props.style ?? {}) },
+          style: { width, height, cursor: 'pointer', ...(child.props.style ?? {}) },
           onClick: e => {
             child.props.onClick?.(e);
-            onCardClick?.(i);
+            handleCardClick(i, e);
           }
         })
       : child
