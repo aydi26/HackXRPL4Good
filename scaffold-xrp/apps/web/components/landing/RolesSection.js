@@ -81,7 +81,7 @@ export default function RolesSection() {
   };
 
   return (
-    <section id="roles" className="relative min-h-screen flex items-center py-20 px-4">
+    <section id="roles" className="relative min-h-screen flex items-center py-10 px-4">
       <div className="max-w-7xl mx-auto w-full">
         <motion.div
           initial="hidden"
@@ -144,9 +144,9 @@ export default function RolesSection() {
                   <motion.div
                     key={idx}
                     variants={itemVariants}
-                    className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/30 transition-all group"
+                    className="flex gap-4 p-4 group"
                   >
-                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 rounded-lg flex items-center justify-center text-emerald-400 font-bold group-hover:scale-110 transition-transform">
+                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-400 font-bold group-hover:scale-110 transition-transform">
                       {item.step}
                     </div>
                     <div>
@@ -159,7 +159,7 @@ export default function RolesSection() {
 
               <motion.div
                 variants={itemVariants}
-                className="flex items-center gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30"
+                className="flex items-center gap-2 p-4"
               >
                 <ShieldIcon />
                 <p className="text-emerald-300 text-sm font-medium">
@@ -176,47 +176,39 @@ export default function RolesSection() {
           >
             <CardSwap
               width={350}
-              height={450}
+              height={400}
               cardDistance={60}
               verticalDistance={50}
-              delay={4000}
+              delay={8000}
               pauseOnHover={true}
               skewAmount={5}
               easing="elastic"
             >
               {roles.map((role) => (
-                <Card key={role.id} className="p-6 flex flex-col overflow-hidden">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-6">
-                    <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/70">
-                      {role.subtitle}
-                    </span>
-                  </div>
+                <Card key={role.id} className="p-6 flex flex-col">
+                  {/* Subtitle */}
+                  <p className="text-emerald-400 text-sm font-medium mb-2">
+                    {role.subtitle}
+                  </p>
 
-                  {/* Content */}
-                  <h3 className="text-2xl font-bold text-white mb-3">
+                  {/* Title */}
+                  <h3 className="text-3xl font-bold text-white mb-4">
                     {role.title}
                   </h3>
-                  <p className="text-white/70 text-sm mb-6 leading-relaxed">
+                  
+                  {/* Description */}
+                  <p className="text-white/70 text-base mb-6 leading-relaxed">
                     {role.description}
                   </p>
 
                   {/* Features */}
-                  <div className="space-y-2 mb-6">
+                  <div className="space-y-3">
                     {role.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="flex items-center gap-3">
                         <CheckIcon />
-                        <span className="text-white/80 text-sm">{feature}</span>
+                        <span className="text-white/80">{feature}</span>
                       </div>
                     ))}
-                  </div>
-
-                  {/* Credential Badge */}
-                  <div className="mt-auto pt-4 border-t border-white/10">
-                    <div className="flex items-center gap-2 text-xs text-white/50">
-                      <ShieldIcon />
-                      <span>Verified credential required</span>
-                    </div>
                   </div>
                 </Card>
               ))}

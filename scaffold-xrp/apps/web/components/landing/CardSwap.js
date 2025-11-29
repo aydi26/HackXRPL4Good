@@ -7,7 +7,7 @@ export const Card = forwardRef(({ customClass, children, ...rest }, ref) => (
   <div
     ref={ref}
     {...rest}
-    className={`absolute top-1/2 left-1/2 rounded-xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-sm shadow-2xl ${customClass ?? ''} ${rest.className ?? ''}`.trim()}
+    className={`absolute top-1/2 left-1/2 rounded-xl border border-white/20 bg-black/30 backdrop-blur-md ${customClass ?? ''} ${rest.className ?? ''}`.trim()}
     style={{
       transformStyle: 'preserve-3d',
       willChange: 'transform',
@@ -55,18 +55,18 @@ const CardSwap = ({
   const config =
     easing === 'elastic'
       ? {
-          ease: 'elastic.out(0.6,0.9)',
-          durDrop: 2,
-          durMove: 2,
-          durReturn: 2,
+          ease: 'elastic.out(0.4,0.8)',
+          durDrop: 3,
+          durMove: 3,
+          durReturn: 3,
           promoteOverlap: 0.9,
           returnDelay: 0.05
         }
       : {
           ease: 'power1.inOut',
-          durDrop: 0.8,
-          durMove: 0.8,
-          durReturn: 0.8,
+          durDrop: 1.2,
+          durMove: 1.2,
+          durReturn: 1.2,
           promoteOverlap: 0.45,
           returnDelay: 0.2
         };

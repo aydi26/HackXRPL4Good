@@ -32,11 +32,8 @@ export default function TransporterPage() {
   ];
 
   const logo = (
-    <a href="/" className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
-        <span className="text-white font-bold text-sm">C</span>
-      </div>
-      <span className="text-white font-semibold text-lg tracking-tight">CertiChain</span>
+    <a href="/" className="text-white font-semibold text-lg tracking-tight hover:text-emerald-300 transition-colors">
+      CertiChain
     </a>
   );
 
@@ -68,26 +65,30 @@ export default function TransporterPage() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-purple-950">
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f]">
       {/* GridScan Background */}
       <div className="fixed inset-0 z-0">
         <GridScan
           sensitivity={0.55}
           lineThickness={1}
-          linesColor="#392e4e"
+          linesColor="#10b981"
           gridScale={0.1}
           lineStyle="solid"
           lineJitter={0.1}
           enablePost={true}
+          bloomIntensity={1.2}
+          bloomThreshold={0.3}
+          bloomSmoothing={0.9}
           chromaticAberration={0.002}
-          noiseIntensity={0.01}
-          scanColor="#a855f7"
-          scanOpacity={0.4}
+          noiseIntensity={0.015}
+          scanColor="#34d399"
+          scanOpacity={0.6}
           scanDirection="pingpong"
-          scanSoftness={2}
-          scanGlow={0.5}
-          scanDuration={2.0}
-          scanDelay={2.0}
+          scanSoftness={2.5}
+          scanGlow={1.2}
+          scanPhaseTaper={0.9}
+          scanDuration={6.0}
+          scanDelay={4.0}
         />
       </div>
 
