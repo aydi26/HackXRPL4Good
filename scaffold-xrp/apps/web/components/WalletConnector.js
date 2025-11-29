@@ -29,12 +29,20 @@ const THEMES = {
     "--xc-text-muted-color": "rgba(243, 232, 255, 0.6)",
     "--xc-primary-color": "#a78bfa",
   },
+  emerald: {
+    "--xc-background-color": "#022c22",
+    "--xc-background-secondary": "#064e3b",
+    "--xc-background-tertiary": "#065f46",
+    "--xc-text-color": "#ecfdf5",
+    "--xc-text-muted-color": "rgba(236, 253, 245, 0.6)",
+    "--xc-primary-color": "#10b981",
+  },
 };
 
 export function WalletConnector() {
   const { walletManager } = useWallet();
   const walletConnectorRef = useWalletConnector(walletManager);
-  const [currentTheme] = useState("dark");
+  const [currentTheme] = useState("emerald");
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
