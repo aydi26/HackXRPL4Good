@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config({ path: '../.env' }); 
 const xrpl = require("xrpl");
 
 // ON RÉCUPÈRE LA SEED DU .ENV

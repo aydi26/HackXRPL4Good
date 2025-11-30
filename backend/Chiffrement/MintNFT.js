@@ -17,7 +17,8 @@ async function mintSemiPrivateNFT() {
             w: "1500kg",
             d: "2024-11-29",
             l: "Ferme du Soleil",
-            n: "LOT-12345"
+            n: "LOT-12345",
+            pc: "price"
         };
         const imageSecrete = "ipfs://zobzobzobzobzobzozbozbozbzobzobzobzobzobzob"; // Lien IPFS de l'image privée
         // -----------------------------------------------------------------------
