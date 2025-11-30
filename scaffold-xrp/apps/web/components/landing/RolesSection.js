@@ -19,17 +19,17 @@ const roles = [
     href: '/seller'
   },
   {
-    id: 'buyer',
-    title: 'Buyer',
-    subtitle: 'Verified Consumer',
+    id: 'producer',
+    title: 'Producer',
+    subtitle: 'Agricultural Validator',
     gradient: 'from-blue-500 to-blue-700',
-    description: 'Buy with confidence certified products with complete traceability.',
+    description: 'Validate and certify seller offers with complete traceability.',
     features: [
+      'Offer validation',
       'Certificate verification',
-      'Purchase history',
-      'Product ratings'
+      'Traceability tracking'
     ],
-    href: '/buyer'
+    href: '/producer'
   },
   {
     id: 'transporter',

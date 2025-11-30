@@ -10,7 +10,7 @@ function log(...args) {
   if (DEBUG) console.log("[WalletProvider]", ...args);
 }
 
-// Clé pour le sessionStorage
+// Clé pour le localStorage (persiste même après fermeture du navigateur)
 const WALLET_SESSION_KEY = "certichain_wallet_session";
 
 // Variable globale pour la session (survit aux re-renders)
@@ -41,21 +41,21 @@ export function WalletProvider({ children }) {
     }
     
     try {
-      const savedSession = sessionStorage.getItem(WALLET_SESSION_KEY);
+      const savedSession = localStorage.getItem(WALLET_SESSION_KEY);
       if (savedSession) {
         const session = JSON.parse(savedSession);
         log("Restored session from storage:", session);
         
-        // Vérifier que la session n'est pas trop vieille (24h max)
+        // Vérifier que la session n'est pas trop vieille (7 jours max)
         const age = Date.now() - (session.timestamp || 0);
-        if (age < 24 * 60 * 60 * 1000 && session.accountInfo) {
+        if (age < 7 * 24 * 60 * 60 * 1000 && session.accountInfo) {
           globalSession = session;
           setAccountInfoState(session.accountInfo);
           setIsConnectedState(true);
           log("✓ Session restored successfully");
         } else {
           log("Session expired or invalid, clearing");
-          sessionStorage.removeItem(WALLET_SESSION_KEY);
+          localStorage.removeItem(WALLET_SESSION_KEY);
         }
       } else {
         log("No saved session found");
@@ -77,9 +77,17 @@ export function WalletProvider({ children }) {
     log("setIsConnected:", connected);
     setIsConnectedState(connected);
     
-    // Si déconnexion, vider la session globale
+    // Si déconnexion, vider la session globale et le localStorage
     if (!connected) {
       globalSession = null;
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem(WALLET_SESSION_KEY);
+          log("Session cleared on disconnect");
+        } catch (e) {
+          log("Failed to clear session on disconnect:", e);
+        }
+      }
     }
   }, []);
 
@@ -97,18 +105,18 @@ export function WalletProvider({ children }) {
       globalSession = null;
     }
     
-    // Persister dans sessionStorage
+    // Persister dans localStorage (persiste même après fermeture du navigateur)
     if (typeof window !== 'undefined') {
       try {
         if (info) {
-          sessionStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({
+          localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({
             accountInfo: info,
             timestamp: Date.now()
           }));
-          log("Session saved to storage");
+          log("Session saved to localStorage");
         } else {
-          sessionStorage.removeItem(WALLET_SESSION_KEY);
-          log("Session cleared from storage");
+          localStorage.removeItem(WALLET_SESSION_KEY);
+          log("Session cleared from localStorage");
         }
       } catch (e) {
         log("Failed to save session:", e);

@@ -7,15 +7,15 @@ import CardNav from "../../components/landing/CardNav";
 import Footer from "../../components/landing/Footer";
 import WalletButton from "../../components/landing/WalletButton";
 import WalletConnectionScreen from "../../components/WalletConnectionScreen";
-import TransporterOffersList from "../../components/transporter/TransporterOffersList";
-import TransporterOfferDetails from "../../components/transporter/TransporterOfferDetails";
-import TransporterAcceptRejectModal from "../../components/transporter/TransporterAcceptRejectModal";
+import ProducerOffersList from "../../components/producer/ProducerOffersList";
+import ProducerOfferDetails from "../../components/producer/ProducerOfferDetails";
+import ProducerAcceptRejectModal from "../../components/producer/ProducerAcceptRejectModal";
 import { useWallet } from "../../components/providers/WalletProvider";
 
 // Bypass wallet check - set to false to require wallet connection
 const BYPASS_WALLET_CHECK = false;
 
-export default function TransporterPage() {
+export default function ProducerPage() {
   const { isConnected, accountInfo, isSessionRestored } = useWallet();
   const [offers, setOffers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,19 +60,17 @@ export default function TransporterPage() {
 
   // Load offers from localStorage or API
   useEffect(() => {
-    // Load seller listings and convert them to transport offers
+    // Load seller listings and convert them to offers for producer
     const savedListings = localStorage.getItem("sellerListings");
     if (savedListings) {
       try {
         const listings = JSON.parse(savedListings);
-        // Convert listings to transport offers (only producer-validated and ready)
-        const transportOffers = listings
+        // Convert listings to offers (only pending and producer-validated)
+        const producerOffers = listings
           .filter(listing => 
-            listing.status === "producer-validated" || 
-            listing.status === "producer-transporter-validated" ||
-            listing.status === "transport-accepted" ||
-            listing.status === "in-transit" ||
-            listing.status === "completed"
+            listing.status === "pending" || 
+            listing.status === "producer-validated" ||
+            listing.status === "producer-transporter-validated"
           )
           .map(listing => ({
             id: listing.id,
@@ -82,39 +80,29 @@ export default function TransporterPage() {
             lotNumber: listing.lotNumber,
             price: listing.price,
             pricePerKg: listing.pricePerKg,
-            distance: Math.floor(Math.random() * 500) + 50, // Placeholder distance
-            transportPrice: (Math.random() * 10 + 5).toFixed(2), // Placeholder transport price
-            sellerValidated: true,
-            producerValidated: listing.status !== "pending",
+            certificateUrl: listing.certificateUrl,
+            sellerAddress: "rSeller123...", // Placeholder
+            sellerName: "Seller Account", // Placeholder
+            status: listing.status === "pending" ? "pending" : "accepted",
+            createdAt: listing.createdAt,
             producerValidation: listing.producerValidation,
-            transporterValidation: listing.transporterValidation,
-            status: listing.status === "producer-validated" 
-              ? "ready-for-transport"
-              : listing.status === "producer-transporter-validated"
-              ? "ready-for-transport"
-              : listing.status === "transport-accepted"
-              ? "transport-accepted"
-              : listing.status === "in-transit"
-              ? "in-transit"
-              : listing.status === "completed"
-              ? "completed"
-              : "ready-for-transport",
-            createdAt: listing.createdAt
+            traceabilityInfo: listing.traceabilityInfo || null
           }));
-        setOffers(transportOffers);
+        setOffers(producerOffers);
       } catch (e) {
-        console.error("Error loading transport offers:", e);
+        console.error("Error loading offers:", e);
       }
     }
 
-    // Also check for transporter-specific offers
-    const savedOffers = localStorage.getItem("transporterOffers");
+    // Also check for producer-specific offers
+    const savedOffers = localStorage.getItem("producerOffers");
     if (savedOffers) {
       try {
-        const transporterOffers = JSON.parse(savedOffers);
+        const producerOffers = JSON.parse(savedOffers);
         setOffers(prev => {
+          // Merge with existing offers, avoiding duplicates
           const merged = [...prev];
-          transporterOffers.forEach(offer => {
+          producerOffers.forEach(offer => {
             if (!merged.find(o => o.id === offer.id)) {
               merged.push(offer);
             }
@@ -122,7 +110,7 @@ export default function TransporterPage() {
           return merged;
         });
       } catch (e) {
-        console.error("Error loading transporter offers:", e);
+        console.error("Error loading producer offers:", e);
       }
     }
   }, []);
@@ -130,7 +118,7 @@ export default function TransporterPage() {
   // Save offers to localStorage
   const saveOffers = (newOffers) => {
     setOffers(newOffers);
-    localStorage.setItem("transporterOffers", JSON.stringify(newOffers));
+    localStorage.setItem("producerOffers", JSON.stringify(newOffers));
   };
 
   const handleAccept = (offer) => {
@@ -155,8 +143,8 @@ export default function TransporterPage() {
         if (offer.id === offerId) {
           return {
             ...offer,
-            status: actionType === "accept" ? "transport-accepted" : "rejected",
-            transporterValidation: {
+            status: actionType === "accept" ? "accepted" : "rejected",
+            producerValidation: {
               status: actionType === "accept" ? "accepted" : "rejected",
               reason: reason || null,
               date: new Date().toISOString()
@@ -175,8 +163,8 @@ export default function TransporterPage() {
             if (listing.id === offerId) {
               return {
                 ...listing,
-                status: actionType === "accept" ? "producer-transporter-validated" : "cancelled",
-                transporterValidation: {
+                status: actionType === "accept" ? "producer-validated" : "cancelled",
+                producerValidation: {
                   status: actionType === "accept" ? "accepted" : "rejected",
                   reason: reason || null,
                   date: new Date().toISOString()
@@ -196,10 +184,10 @@ export default function TransporterPage() {
       setShowAcceptRejectModal(false);
       setSelectedOffer(null);
       setActionType(null);
-      alert(`Transport ${actionType === "accept" ? "accepted" : "rejected"} successfully!`);
+      alert(`Offer ${actionType === "accept" ? "accepted" : "rejected"} successfully!`);
     } catch (error) {
-      console.error("Error processing transport offer:", error);
-      alert(`Failed to ${actionType} transport. Please try again.`);
+      console.error("Error processing offer:", error);
+      alert(`Failed to ${actionType} offer. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -211,9 +199,9 @@ export default function TransporterPage() {
   };
 
   if (!canAccess) {
-    const TransporterIcon = () => (
+    const ProducerIcon = () => (
       <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     );
 
@@ -258,17 +246,17 @@ export default function TransporterPage() {
 
         <div className="relative z-10">
           <WalletConnectionScreen
-            title="Transporter Dashboard"
-            subtitle="Certified Logistics"
-            description="Accept and manage transport missions on the XRPL blockchain. Validate deliveries, maintain product traceability, and ensure the integrity of the supply chain from origin to destination."
+            title="Producer Dashboard"
+            subtitle="Agricultural Validator"
+            description="Validate and certify seller offers on the XRPL blockchain. Review product listings, verify certificates, and maintain the integrity of the agricultural supply chain."
             features={[
-              "View transport-ready listings",
-              "Accept or reject transport missions",
-              "Track validation status (Seller → Producer)",
-              "Monitor delivery progress",
-              "Maintain complete traceability chain"
+              "Review seller product listings",
+              "Validate certificates and documentation",
+              "Accept or reject offers with reasons",
+              "Track traceability information",
+              "Maintain supply chain integrity"
             ]}
-            icon={TransporterIcon}
+            icon={ProducerIcon}
           />
         </div>
       </div>
@@ -328,13 +316,13 @@ export default function TransporterPage() {
             className="text-center mb-12"
           >
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-              Transporter Dashboard
+              Producer Dashboard
             </h1>
-            <p className="text-purple-400 text-lg font-medium">Accept and manage transport missions</p>
+            <p className="text-blue-400 text-lg font-medium">Validate and manage seller offers</p>
           </motion.div>
 
           {/* Offers List */}
-          <TransporterOffersList
+          <ProducerOffersList
             offers={offers}
             onView={handleViewDetails}
             onAccept={handleAccept}
@@ -346,7 +334,7 @@ export default function TransporterPage() {
       {/* Modals */}
       <AnimatePresence>
         {showDetails && selectedOffer && (
-          <TransporterOfferDetails
+          <ProducerOfferDetails
             offer={selectedOffer}
             onClose={() => {
               setShowDetails(false);
@@ -358,7 +346,7 @@ export default function TransporterPage() {
         )}
 
         {showAcceptRejectModal && selectedOffer && (
-          <TransporterAcceptRejectModal
+          <ProducerAcceptRejectModal
             offer={selectedOffer}
             action={actionType}
             onClose={() => {
@@ -376,3 +364,4 @@ export default function TransporterPage() {
     </div>
   );
 }
+
