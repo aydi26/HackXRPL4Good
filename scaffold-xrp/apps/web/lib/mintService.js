@@ -3,6 +3,8 @@
  * 
  * Handles minting NFTs using the connected wallet (Gem, Crossmark, etc.)
  * The wallet handles signing, so no secret is exposed to the frontend.
+ * 
+ * Uses mintSemiPrivateNFT from backend for encryption.
  */
 
 import { Client } from "xrpl";
@@ -14,6 +16,8 @@ const DEBUG = true;
 function log(...args) {
   if (DEBUG) console.log("[MintService]", ...args);
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
 // NFT Taxon for CertiChain products
 export const CERTICHAIN_TAXON = 1;
@@ -270,6 +274,168 @@ export async function mintProductNFTFromMetadata({
 }
 
 /**
+ * Mint a Semi-Private NFT with encrypted image
+ * Uses backend for encryption (ECIES) and wallet for signing
+ * 
+ * @param {object} params
+ * @param {object} params.walletManager - Wallet manager from useWallet hook
+ * @param {string} params.sellerAddress - Seller's XRPL address
+ * @param {object} params.publicData - Public product data
+ * @param {string} params.publicData.productType - Product type (e.g., "Apple")
+ * @param {string} params.publicData.weight - Weight in kg
+ * @param {string} params.publicData.date - Date (YYYY-MM-DD)
+ * @param {string} params.publicData.lotNumber - Lot number
+ * @param {string} params.publicData.labo - Laboratory/Location name
+ * @param {string} params.publicData.price - Price
+ * @param {string} params.ipfsImageLink - IPFS gateway URL of the image
+ * @param {string} params.laboPublicKey - Labo's secp256k1 public key for encryption
+ * @returns {Promise<{success: boolean, nftTokenId?: string, txHash?: string, error?: string}>}
+ */
+export async function mintSemiPrivateNFT({
+  walletManager,
+  sellerAddress,
+  publicData,
+  ipfsImageLink,
+  laboPublicKey,
+}) {
+  log("=== mintSemiPrivateNFT ===");
+  log("Seller:", sellerAddress);
+  log("Public Data:", publicData);
+  log("IPFS Image:", ipfsImageLink);
+  log("Labo Key:", laboPublicKey?.slice(0, 20) + "...");
+
+  if (!walletManager) {
+    return { success: false, error: "Wallet not connected" };
+  }
+
+  if (!sellerAddress) {
+    return { success: false, error: "Seller address not available" };
+  }
+
+  if (!ipfsImageLink) {
+    return { success: false, error: "IPFS image link is required" };
+  }
+
+  if (!laboPublicKey) {
+    return { success: false, error: "Labo public key is required" };
+  }
+
+  try {
+    // Step 1: Call backend to prepare encrypted transaction
+    log("Step 1: Preparing encrypted transaction via backend...");
+    
+    const response = await fetch(`${API_URL}/api/mint/semi-private-wallet`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sellerAddress,
+        publicData,
+        ipfsImageLink,
+        laboPublicKey,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Backend error: ${response.status}`);
+    }
+
+    const prepResult = await response.json();
+    
+    if (!prepResult.success) {
+      throw new Error(prepResult.error || "Failed to prepare transaction");
+    }
+
+    log("Transaction prepared:", prepResult.transaction);
+    log("URI Hex length:", prepResult.uriHex?.length);
+    log("Seal Hex length:", prepResult.sealHex?.length);
+
+    // Step 2: Sign and submit using connected wallet
+    log("Step 2: Signing and submitting transaction...");
+    const result = await walletManager.signAndSubmit(prepResult.transaction);
+    
+    log("Transaction result:", JSON.stringify(result, null, 2));
+
+    // Step 3: Extract NFT Token ID from result
+    // Different wallets return results in different formats
+    const txResult = result.result || result.response || result;
+    
+    // Check if successful - handle multiple response formats
+    const txResultCode = txResult.meta?.TransactionResult || 
+                         txResult.engine_result || 
+                         result.engine_result ||
+                         result.status;
+    
+    log("Transaction result code:", txResultCode);
+    
+    // If there's a hash, it likely succeeded on-chain
+    const txHash = txResult.hash || result.hash || result.tx_hash || result.txHash;
+    
+    // Consider success if we have a hash OR explicit success status
+    const isSuccess = txResultCode === "tesSUCCESS" || 
+                      txResultCode === "success" ||
+                      (txHash && !txResultCode?.startsWith?.("tec") && !txResultCode?.startsWith?.("tef"));
+    
+    if (!isSuccess && txResultCode) {
+      throw new Error(`Transaction failed: ${txResultCode}`);
+    }
+
+    // Try to extract NFT Token ID
+    let nftTokenId = null;
+    
+    // Method 1: Direct from meta
+    if (txResult.meta?.nftoken_id) {
+      nftTokenId = txResult.meta.nftoken_id;
+    }
+    
+    // Method 2: From AffectedNodes
+    if (!nftTokenId && txResult.meta?.AffectedNodes) {
+      for (const node of txResult.meta.AffectedNodes) {
+        if (node.CreatedNode?.LedgerEntryType === "NFTokenPage") {
+          const nftokens = node.CreatedNode?.NewFields?.NFTokens;
+          if (nftokens && nftokens.length > 0) {
+            nftTokenId = nftokens[nftokens.length - 1].NFToken?.NFTokenID;
+          }
+        }
+        if (node.ModifiedNode?.LedgerEntryType === "NFTokenPage") {
+          const finalNFTokens = node.ModifiedNode?.FinalFields?.NFTokens;
+          const previousNFTokens = node.ModifiedNode?.PreviousFields?.NFTokens || [];
+          
+          if (finalNFTokens) {
+            const previousIds = new Set(previousNFTokens.map(t => t.NFToken?.NFTokenID));
+            const newToken = finalNFTokens.find(t => !previousIds.has(t.NFToken?.NFTokenID));
+            if (newToken) {
+              nftTokenId = newToken.NFToken?.NFTokenID;
+            }
+          }
+        }
+      }
+    }
+
+    // txHash is already extracted above
+    log("Semi-Private NFT minted successfully!");
+    log("NFT Token ID:", nftTokenId);
+    log("Transaction hash:", txHash);
+
+    return {
+      success: true,
+      nftTokenId,
+      txHash,
+      uriHex: prepResult.uriHex,
+      sealHex: prepResult.sealHex,
+    };
+  } catch (error) {
+    log("Error minting Semi-Private NFT:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to mint NFT",
+    };
+  }
+}
+
+/**
  * Get NFT Token ID from a recent mint transaction
  * Useful if we didn't capture it during minting
  * 
@@ -321,7 +487,6 @@ export async function getNFTFromRecentMint(address, txHash = null) {
  */
 export async function checkMintingAvailable() {
   try {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     
@@ -334,7 +499,8 @@ export async function checkMintingAvailable() {
       return false;
     }
     const data = await response.json();
-    return data.status === "ok";
+    // Backend returns { success: true } not { status: "ok" }
+    return data.success === true;
   } catch {
     return false;
   }

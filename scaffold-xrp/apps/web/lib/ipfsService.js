@@ -150,11 +150,13 @@ export async function uploadNFTToIPFS(imageFile, metadata) {
     return {
       success: true,
       imageCid: cid,
-      imageUrl: ipfsUrl,
+      // Use gateway URL as main imageUrl for accessibility
+      imageUrl: gatewayUrl,
+      ipfsUrl: ipfsUrl,
       gatewayUrl: gatewayUrl,
       // Also return as metadataUrl for compatibility with mint flow
       metadataCid: cid,
-      metadataUrl: ipfsUrl,
+      metadataUrl: gatewayUrl,
     };
   } catch (error) {
     log("Error uploading image:", error);
