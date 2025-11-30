@@ -1,15 +1,26 @@
+// Charger les variables d'environnement EN PREMIER
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
 
 const { routes: credentialRoutes } = require("./credentials");
+const { routes: ipfsRoutes } = require("./ipfs");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Debug: vérifier que les variables sont chargées
+console.log("📋 PINATA_JWT loaded:", process.env.PINATA_JWT ? "✓ Yes" : "✗ No");
+console.log("📋 PINATA_GATEWAY:", process.env.PINATA_GATEWAY || "default");
+
 // Routes credentials
 app.use("/api/credentials", credentialRoutes);
+
+// Routes IPFS
+app.use("/api/ipfs", ipfsRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
