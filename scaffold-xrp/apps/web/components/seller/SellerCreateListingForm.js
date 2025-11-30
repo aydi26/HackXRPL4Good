@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useWallet } from "../providers/WalletProvider";
-import { mintProductNFTFromMetadata, checkMintingAvailable } from "../../lib/mintService";
+import { mintSemiPrivateNFT, checkMintingAvailable } from "../../lib/mintService";
 import { uploadNFTToIPFS, createCompactMetadata } from "../../lib/ipfsService";
 
 const PRODUCT_TYPES = ["Apple", "Grape", "Orange", "Lemon", "Strawberry", "Tomato", "Potato", "Carrot"];
@@ -151,34 +151,66 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
     }
   };
 
-  // Handle Mint NFT (now uses pre-uploaded metadata)
+  // Handle Mint NFT - Uses Semi-Private NFT with encryption
   const handleMintNFT = async () => {
     if (!validate()) return;
-    
-    // If not uploaded yet, upload first
-    if (!uploadResult?.success) {
-      await handleSaveDraft();
-      // Wait a bit for state to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    // Check if we have the metadata URL
-    const metadataUrl = uploadResult?.metadataUrl;
-    if (!metadataUrl) {
-      setMintResult({ success: false, error: "Please save draft first to upload to IPFS" });
-      return;
-    }
     
     setIsMinting(true);
     setMintResult(null);
     
     try {
-      const result = await mintProductNFTFromMetadata({
+      let ipfsImageLink = uploadResult?.gatewayUrl || uploadResult?.imageUrl;
+      
+      // If not uploaded yet, upload first
+      if (!ipfsImageLink) {
+        console.log("[MintNFT] No image uploaded yet, uploading first...");
+        setIsUploading(true);
+        
+        const metadata = createCompactMetadata({
+          ...formData,
+          sellerName: accountInfo?.walletName || "Seller",
+        }, "");
+        
+        const uploadRes = await uploadNFTToIPFS(formData.certificate, metadata);
+        setIsUploading(false);
+        
+        if (!uploadRes.success) {
+          throw new Error(uploadRes.error || "Failed to upload to IPFS");
+        }
+        
+        setUploadResult(uploadRes);
+        ipfsImageLink = uploadRes.gatewayUrl || uploadRes.imageUrl;
+        console.log("[MintNFT] Image uploaded:", ipfsImageLink);
+      }
+      
+      if (!ipfsImageLink) {
+        throw new Error("Failed to get IPFS image URL");
+      }
+    
+      // Prepare public data for the NFT
+      const publicData = {
+        productType: formData.productType,
+        weight: formData.weight,
+        date: formData.date,
+        lotNumber: formData.lotNumber,
+        labo: formData.labo,
+        price: formData.price,
+      };
+
+      console.log("[MintNFT] Minting with data:", publicData);
+      console.log("[MintNFT] IPFS Image:", ipfsImageLink);
+      console.log("[MintNFT] Labo Key:", formData.labo_key?.slice(0, 20) + "...");
+
+      // Mint Semi-Private NFT with encryption
+      const result = await mintSemiPrivateNFT({
         walletManager,
         sellerAddress: accountInfo?.address,
-        metadataUrl: metadataUrl,
+        publicData,
+        ipfsImageLink,
+        laboPublicKey: formData.labo_key,
       });
       
+      console.log("[MintNFT] Result:", result);
       setMintResult(result);
       
       if (result.success) {
@@ -187,15 +219,17 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
           ...formData,
           nftTokenId: result.nftTokenId,
           txHash: result.txHash,
-          metadataUrl: metadataUrl,
-          imageUrl: uploadResult?.imageUrl,
+          imageUrl: ipfsImageLink,
+          uriHex: result.uriHex,
+          sealHex: result.sealHex,
         });
       }
     } catch (error) {
-      console.error("Mint error:", error);
+      console.error("[MintNFT] Error:", error);
       setMintResult({ success: false, error: error.message });
     } finally {
       setIsMinting(false);
+      setIsUploading(false);
     }
   };
 
@@ -456,15 +490,25 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
                   </svg>
                   Uploaded to IPFS - Ready to Mint!
                 </h3>
-                <div className="text-sm space-y-1">
-                  <p className="text-white/60">
-                    <span className="text-white/40">Metadata:</span>{" "}
-                    <span className="font-mono text-xs">{uploadResult.metadataCid?.slice(0, 20)}...</span>
-                  </p>
+                <div className="text-sm space-y-2">
+                  {/* Lien cliquable vers l'image */}
+                  {(uploadResult.gatewayUrl || uploadResult.imageUrl) && (
+                    <div className="p-2 bg-white/5 rounded-lg">
+                      <p className="text-white/40 text-xs mb-1">Image IPFS :</p>
+                      <a 
+                        href={uploadResult.gatewayUrl || uploadResult.imageUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 underline break-all text-xs"
+                      >
+                        {uploadResult.gatewayUrl || uploadResult.imageUrl}
+                      </a>
+                    </div>
+                  )}
                   {uploadResult.imageCid && (
                     <p className="text-white/60">
-                      <span className="text-white/40">Image:</span>{" "}
-                      <span className="font-mono text-xs">{uploadResult.imageCid?.slice(0, 20)}...</span>
+                      <span className="text-white/40">CID:</span>{" "}
+                      <span className="font-mono text-xs">{uploadResult.imageCid}</span>
                     </p>
                   )}
                 </div>
@@ -520,9 +564,9 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
           <button
             type="button"
             onClick={handleMintNFT}
-            disabled={!isFormValid || isLoading || isMinting || isUploading || !backendAvailable}
+            disabled={!isFormValid || isLoading || isMinting || isUploading}
             className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-              !isFormValid || isLoading || isMinting || isUploading || !backendAvailable
+              !isFormValid || isLoading || isMinting || isUploading
                 ? "bg-white/5 text-white/30 cursor-not-allowed"
                 : uploadResult?.success
                   ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
