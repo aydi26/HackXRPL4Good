@@ -62,9 +62,7 @@ export default function SellerListingDetails({ listing, onClose }) {
             </div>
             <div>
               <p className="text-white/50 text-sm mb-1">Price</p>
-              <p className="text-white font-semibold text-lg">
-                {listing.price} XRP {listing.pricePerKg ? "/kg" : "total"}
-              </p>
+              <p className="text-white font-semibold text-lg">{listing.price} XRP</p>
             </div>
             <div>
               <p className="text-white/50 text-sm mb-1">Date</p>
@@ -73,7 +71,7 @@ export default function SellerListingDetails({ listing, onClose }) {
               </p>
             </div>
             <div>
-              <p className="text-white/50 text-sm mb-1">Laboratory</p>
+              <p className="text-white/50 text-sm mb-1">Lieu</p>
               <p className="text-white font-semibold text-lg">{listing.labo || "N/A"}</p>
             </div>
           </div>

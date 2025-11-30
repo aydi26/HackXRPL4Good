@@ -91,12 +91,8 @@ export default function ListingDetailsModal({ listing, onClose, onBuy }) {
           <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
             <div className="flex items-end justify-between">
               <div>
-                <span className="text-white/50 text-sm">Total Price</span>
+                <span className="text-white/50 text-sm">Price</span>
                 <p className="text-3xl font-bold text-white">{listing.price} <span className="text-xl text-white/60">XRP</span></p>
-              </div>
-              <div className="text-right">
-                <span className="text-white/50 text-sm">Per kilogram</span>
-                <p className="text-xl font-medium text-white">{listing.pricePerKg} XRP/kg</p>
               </div>
             </div>
           </div>
@@ -112,7 +108,7 @@ export default function ListingDetailsModal({ listing, onClose, onBuy }) {
               <p className="text-white text-lg font-medium">{formatDate(listing.date)}</p>
             </div>
             <div className="bg-white/5 rounded-xl p-4">
-              <span className="text-white/40 text-sm">Laboratory</span>
+              <span className="text-white/40 text-sm">Lieu</span>
               <p className="text-white text-lg font-medium">{listing.labo || "Not specified"}</p>
             </div>
             <div className="bg-white/5 rounded-xl p-4">
@@ -204,9 +200,9 @@ export default function ListingDetailsModal({ listing, onClose, onBuy }) {
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
-              Buy Now
+              Proposer une offre
             </button>
           </div>
         </div>

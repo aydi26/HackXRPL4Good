@@ -11,6 +11,8 @@ import LoadingScreen from "../../components/LoadingScreen";
 import AccessDeniedScreen from "../../components/AccessDeniedScreen";
 import MarketplaceListingCard from "../../components/buyer/MarketplaceListingCard";
 import ListingDetailsModal from "../../components/buyer/ListingDetailsModal";
+import MakeOfferModal from "../../components/buyer/MakeOfferModal";
+import MyOffersList from "../../components/buyer/MyOffersList";
 import { useWallet } from "../../components/providers/WalletProvider";
 import { useCredentialContext } from "../../components/providers/CredentialProvider";
 import { fetchMarketplaceListings } from "../../lib/nftMarketplace";
@@ -30,8 +32,35 @@ export default function BuyerPage() {
   const [selectedListing, setSelectedListing] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
+  // Offer system state
+  const [myOffers, setMyOffers] = useState([]);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerListing, setOfferListing] = useState(null);
+  const [showMyOffers, setShowMyOffers] = useState(false);
+
   // Check credential access
   const hasBuyerCredential = hasAccess("buyer");
+
+  // Load saved offers from localStorage on mount
+  useEffect(() => {
+    if (accountInfo?.address) {
+      const savedOffers = localStorage.getItem(`certichain_offers_${accountInfo.address}`);
+      if (savedOffers) {
+        try {
+          setMyOffers(JSON.parse(savedOffers));
+        } catch (e) {
+          console.error("Error loading saved offers:", e);
+        }
+      }
+    }
+  }, [accountInfo?.address]);
+
+  // Save offers to localStorage when they change
+  useEffect(() => {
+    if (accountInfo?.address && myOffers.length > 0) {
+      localStorage.setItem(`certichain_offers_${accountInfo.address}`, JSON.stringify(myOffers));
+    }
+  }, [myOffers, accountInfo?.address]);
 
   const navItems = [
     {
@@ -125,9 +154,28 @@ export default function BuyerPage() {
     setShowDetails(true);
   };
 
-  const handleBuyListing = (listing) => {
-    // TODO: Implement purchase flow with XRPL payment
-    alert(`Purchase flow for "${listing.productType}" coming soon!\n\nPrice: ${listing.price} XRP`);
+  const handleMakeOffer = (listing) => {
+    setOfferListing(listing);
+    setShowOfferModal(true);
+  };
+
+  const handleOfferSuccess = (offerData) => {
+    // Add the new offer to myOffers
+    const newOffer = {
+      ...offerData,
+      productType: offerListing?.productType || "Product NFT",
+      sellerAddress: offerListing?.sellerAddress,
+      nftId: offerListing?.nftId,
+      status: "pending",
+    };
+    setMyOffers(prev => [newOffer, ...prev]);
+    
+    // Close modal
+    setShowOfferModal(false);
+    setOfferListing(null);
+    
+    // Show success notification (you can enhance this)
+    console.log("Offer sent successfully:", newOffer);
   };
 
   const handleRefresh = async () => {
@@ -305,22 +353,39 @@ export default function BuyerPage() {
                 </p>
               </div>
               
-              {/* Refresh Button */}
-              <button
-                onClick={handleRefresh}
-                disabled={isLoadingListings}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:bg-white/5 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
-              >
-                <svg 
-                  className={`w-5 h-5 ${isLoadingListings ? "animate-spin" : ""}`} 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
+              <div className="flex items-center gap-3">
+                {/* Toggle My Offers */}
+                <button
+                  onClick={() => setShowMyOffers(!showMyOffers)}
+                  className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 ${
+                    showMyOffers 
+                      ? "bg-blue-500 text-white" 
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  }`}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {isLoadingListings ? "Loading..." : "Refresh"}
-              </button>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  My Offers ({myOffers.length})
+                </button>
+                
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={isLoadingListings}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:bg-white/5 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg 
+                    className={`w-5 h-5 ${isLoadingListings ? "animate-spin" : ""}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {isLoadingListings ? "Loading..." : "Refresh"}
+                </button>
+              </div>
             </div>
           </motion.div>
 
@@ -350,6 +415,29 @@ export default function BuyerPage() {
               </div>
             </motion.div>
           )}
+
+          {/* My Offers Section */}
+          <AnimatePresence>
+            {showMyOffers && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mb-8 overflow-hidden"
+              >
+                <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                  <h3 className="text-blue-400 text-lg font-semibold mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    My Sent Offers
+                  </h3>
+                  <MyOffersList offers={myOffers} isLoading={false} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Loading State */}
           {isLoadingListings && listings.length === 0 && (
@@ -417,7 +505,7 @@ export default function BuyerPage() {
                   key={listing.nftId || listing.id || idx}
                   listing={listing}
                   onView={handleViewListing}
-                  onBuy={handleBuyListing}
+                  onBuy={handleMakeOffer}
                 />
               ))}
             </motion.div>
@@ -434,7 +522,25 @@ export default function BuyerPage() {
               setShowDetails(false);
               setSelectedListing(null);
             }}
-            onBuy={handleBuyListing}
+            onBuy={() => {
+              setShowDetails(false);
+              setSelectedListing(null);
+              handleMakeOffer(selectedListing);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Make Offer Modal */}
+      <AnimatePresence>
+        {showOfferModal && offerListing && (
+          <MakeOfferModal
+            listing={offerListing}
+            onClose={() => {
+              setShowOfferModal(false);
+              setOfferListing(null);
+            }}
+            onSuccess={handleOfferSuccess}
           />
         )}
       </AnimatePresence>

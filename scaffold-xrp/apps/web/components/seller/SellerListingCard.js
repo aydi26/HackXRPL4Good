@@ -51,9 +51,7 @@ export default function SellerListingCard({ listing, onView, onEdit, onDelete })
         </div>
         <div>
           <p className="text-white/50">Price</p>
-          <p className="text-white font-medium">
-            {listing.price} XRP {listing.pricePerKg ? "/kg" : "total"}
-          </p>
+          <p className="text-white font-medium">{listing.price} XRP</p>
         </div>
       </div>
 

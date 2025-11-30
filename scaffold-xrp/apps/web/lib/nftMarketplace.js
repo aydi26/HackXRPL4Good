@@ -154,6 +154,9 @@ async function fetchMetadata(uri) {
  * - d: date
  * - l: lieu/location/labo
  * - n: numéro de lot (lot number)
+ * - pc: price
+ * - c: certificate/image URL
+ * - s: seller name
  */
 function parseNFTToListing(nft, metadata, sellerAddress) {
   // Try to extract values from various possible field names (including short keys)
@@ -205,13 +208,13 @@ function parseNFTToListing(nft, metadata, sellerAddress) {
   };
   
   const getPrice = () => {
-    const p = metadata?.price || metadata?.cost || metadata?.value || metadata?.pr;
+    // pc is the short key for price
+    const p = metadata?.pc || metadata?.price || metadata?.cost || metadata?.value || metadata?.pr;
     return p ? String(p) : "0";
   };
   
-  const getPricePerKg = () => {
-    const p = metadata?.pricePerKg || metadata?.unitPrice || metadata?.pricePerUnit || metadata?.ppk;
-    return p ? String(p) : "0";
+  const getLaboKey = () => {
+    return metadata?.labo_key || metadata?.laboKey || metadata?.lk || "";
   };
   
   const getImage = () => {
@@ -237,7 +240,7 @@ function parseNFTToListing(nft, metadata, sellerAddress) {
     productType: getName(),
     weight: getWeight(),
     price: getPrice(),
-    pricePerKg: getPricePerKg(),
+    labo_key: getLaboKey(),
     lotNumber: getLotNumber(),
     date: getDate(),
     labo: getLabo(),

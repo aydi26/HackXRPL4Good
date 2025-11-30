@@ -88,7 +88,7 @@ export default function TransporterPage() {
             date: listing.date,
             lotNumber: listing.lotNumber,
             price: listing.price,
-            pricePerKg: listing.pricePerKg,
+            labo_key: listing.labo_key,
             labo: listing.labo,
             distance: Math.floor(Math.random() * 500) + 50, // Placeholder distance
             transportPrice: (Math.random() * 10 + 5).toFixed(2), // Placeholder transport price
@@ -136,7 +136,7 @@ export default function TransporterPage() {
               date: listing.date,
               lotNumber: listing.lotNumber,
               price: listing.price,
-              pricePerKg: listing.pricePerKg,
+              labo_key: listing.labo_key,
               labo: listing.labo,
               distance: Math.floor(Math.random() * 500) + 50,
               transportPrice: (Math.random() * 10 + 5).toFixed(2),

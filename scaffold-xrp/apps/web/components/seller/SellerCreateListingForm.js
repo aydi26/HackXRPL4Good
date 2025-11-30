@@ -1,24 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useWallet } from "../providers/WalletProvider";
+import { mintProductNFTFromMetadata, checkMintingAvailable } from "../../lib/mintService";
+import { uploadNFTToIPFS, createCompactMetadata } from "../../lib/ipfsService";
 
 const PRODUCT_TYPES = ["Apple", "Grape", "Orange", "Lemon", "Strawberry", "Tomato", "Potato", "Carrot"];
 
+// Labo public key constant
+const LABO_PUBLIC_KEY = "03A0343C9615CDBEE180BEEA96C7EF74C053A52F3F1965B85A1C29AFA66AB09354";
+
 export default function SellerCreateListingForm({ onSubmit, isLoading }) {
+  const { walletManager, accountInfo } = useWallet();
+  
   const [formData, setFormData] = useState({
     productType: "",
     weight: "",
     date: "",
     lotNumber: "",
     labo: "",
+    labo_key: LABO_PUBLIC_KEY,
     price: "",
-    pricePerKg: true,
     certificate: null
   });
 
   const [errors, setErrors] = useState({});
   const [certificatePreview, setCertificatePreview] = useState(null);
+  const [isMinting, setIsMinting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [mintResult, setMintResult] = useState(null);
+  const [uploadResult, setUploadResult] = useState(null);
+  const [backendAvailable, setBackendAvailable] = useState(false);
+
+  // Check if backend is available for minting
+  useEffect(() => {
+    checkMintingAvailable().then(setBackendAvailable);
+  }, []);
 
   // Generate lot number
   const generateLotNumber = () => {
@@ -76,7 +94,7 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
     if (!formData.weight || parseFloat(formData.weight) <= 0) newErrors.weight = "Weight must be greater than 0";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.lotNumber) newErrors.lotNumber = "Lot number is required";
-    if (!formData.labo) newErrors.labo = "Laboratory is required";
+    if (!formData.labo) newErrors.labo = "Location is required";
     if (!formData.price || parseFloat(formData.price) <= 0) newErrors.price = "Price must be greater than 0";
     if (!formData.certificate) newErrors.certificate = "Certificate is required";
     
@@ -87,7 +105,97 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      handleSaveDraft();
+    }
+  };
+
+  // Handle Save Draft - Upload to IPFS first
+  const handleSaveDraft = async () => {
+    if (!validate()) return;
+    
+    setIsUploading(true);
+    setUploadResult(null);
+    
+    try {
+      // Create compact metadata
+      const metadata = createCompactMetadata({
+        ...formData,
+        sellerName: accountInfo?.walletName || "Seller",
+      }, ""); // Image URL will be added by backend
+      
+      // Upload image + metadata to IPFS
+      const result = await uploadNFTToIPFS(formData.certificate, metadata);
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to upload to IPFS");
+      }
+      
+      setUploadResult(result);
+      
+      // Save draft with IPFS data
+      onSubmit({
+        ...formData,
+        metadataUrl: result.metadataUrl,
+        imageUrl: result.imageUrl,
+        metadataCid: result.metadataCid,
+        imageCid: result.imageCid,
+        // Mark as ready for minting
+        readyToMint: true,
+      });
+      
+    } catch (error) {
+      console.error("Upload error:", error);
+      setUploadResult({ success: false, error: error.message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Handle Mint NFT (now uses pre-uploaded metadata)
+  const handleMintNFT = async () => {
+    if (!validate()) return;
+    
+    // If not uploaded yet, upload first
+    if (!uploadResult?.success) {
+      await handleSaveDraft();
+      // Wait a bit for state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Check if we have the metadata URL
+    const metadataUrl = uploadResult?.metadataUrl;
+    if (!metadataUrl) {
+      setMintResult({ success: false, error: "Please save draft first to upload to IPFS" });
+      return;
+    }
+    
+    setIsMinting(true);
+    setMintResult(null);
+    
+    try {
+      const result = await mintProductNFTFromMetadata({
+        walletManager,
+        sellerAddress: accountInfo?.address,
+        metadataUrl: metadataUrl,
+      });
+      
+      setMintResult(result);
+      
+      if (result.success) {
+        // Update listing with NFT data
+        onSubmit({
+          ...formData,
+          nftTokenId: result.nftTokenId,
+          txHash: result.txHash,
+          metadataUrl: metadataUrl,
+          imageUrl: uploadResult?.imageUrl,
+        });
+      }
+    } catch (error) {
+      console.error("Mint error:", error);
+      setMintResult({ success: false, error: error.message });
+    } finally {
+      setIsMinting(false);
     }
   };
 
@@ -184,17 +292,17 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
           )}
         </div>
 
-        {/* Laboratory */}
+        {/* Lieu */}
         <div>
           <label className="block text-white/80 font-medium mb-2">
-            Laboratory <span className="text-emerald-400">*</span>
+            Lieu <span className="text-emerald-400">*</span>
           </label>
           <input
             type="text"
             name="labo"
             value={formData.labo}
             onChange={handleChange}
-            placeholder="Enter laboratory name"
+            placeholder="Enter location"
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
           {errors.labo && (
@@ -205,31 +313,18 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
         {/* Price */}
         <div>
           <label className="block text-white/80 font-medium mb-2">
-            <span>
-              Price {formData.pricePerKg ? "per kg" : "total"} (XRP) <span className="text-emerald-400">*</span>
-            </span>
+            Price (XRP) <span className="text-emerald-400">*</span>
           </label>
-          <div className="flex gap-3">
-            <input
-              type="number"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              placeholder="0.00"
-              min="0"
-              step="0.000001"
-              className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <label className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-              <input
-                type="checkbox"
-                checked={formData.pricePerKg}
-                onChange={(e) => setFormData({ ...formData, pricePerKg: e.target.checked })}
-                className="w-4 h-4 text-emerald-500 bg-white/5 border-white/10 rounded focus:ring-emerald-500"
-              />
-              <span className="text-white/80 text-sm">Per kg</span>
-            </label>
-          </div>
+          <input
+            type="number"
+            name="price"
+            value={formData.price}
+            onChange={handleChange}
+            placeholder="0.00"
+            min="0"
+            step="0.000001"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
           {errors.price && (
             <p className="text-red-400 text-sm mt-1">{errors.price}</p>
           )}
@@ -292,26 +387,173 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
               </div>
               <div>
                 <span className="text-white/60">Price:</span>
-                <span className="text-white ml-2">
-                  {formData.price} XRP {formData.pricePerKg ? "/kg" : "total"}
-                </span>
+                <span className="text-white ml-2">{formData.price} XRP</span>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={!isFormValid || isLoading}
-          className={`w-full py-3 px-6 rounded-lg font-semibold transition-all ${
-            !isFormValid || isLoading
-              ? "bg-white/5 text-white/30 cursor-not-allowed"
-              : "bg-emerald-500 hover:bg-emerald-600 text-white"
-          }`}
-        >
-          {isLoading ? "Creating Listing..." : "Create Listing"}
-        </button>
+        {/* Mint Result */}
+        {mintResult && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className={`p-4 rounded-lg border ${
+              mintResult.success 
+                ? "bg-emerald-500/10 border-emerald-500/20" 
+                : "bg-red-500/10 border-red-500/20"
+            }`}
+          >
+            {mintResult.success ? (
+              <div>
+                <h3 className="text-emerald-400 font-semibold mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  NFT Minted Successfully!
+                </h3>
+                <div className="text-sm space-y-1">
+                  <p className="text-white/60">
+                    <span className="text-white/40">Token ID:</span>{" "}
+                    <span className="font-mono text-xs">{mintResult.nftTokenId?.slice(0, 20)}...</span>
+                  </p>
+                  <p className="text-white/60">
+                    <span className="text-white/40">TX:</span>{" "}
+                    <span className="font-mono text-xs">{mintResult.txHash?.slice(0, 20)}...</span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-red-400 font-semibold mb-1 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  Minting Failed
+                </h3>
+                <p className="text-red-300 text-sm">{mintResult.error}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Upload Result */}
+        {uploadResult && !mintResult && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className={`p-4 rounded-lg border ${
+              uploadResult.success 
+                ? "bg-blue-500/10 border-blue-500/20" 
+                : "bg-red-500/10 border-red-500/20"
+            }`}
+          >
+            {uploadResult.success ? (
+              <div>
+                <h3 className="text-blue-400 font-semibold mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Uploaded to IPFS - Ready to Mint!
+                </h3>
+                <div className="text-sm space-y-1">
+                  <p className="text-white/60">
+                    <span className="text-white/40">Metadata:</span>{" "}
+                    <span className="font-mono text-xs">{uploadResult.metadataCid?.slice(0, 20)}...</span>
+                  </p>
+                  {uploadResult.imageCid && (
+                    <p className="text-white/60">
+                      <span className="text-white/40">Image:</span>{" "}
+                      <span className="font-mono text-xs">{uploadResult.imageCid?.slice(0, 20)}...</span>
+                    </p>
+                  )}
+                </div>
+                <p className="text-blue-300 text-sm mt-2">
+                  Click "Mint NFT" to create the NFT on XRPL
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-red-400 font-semibold mb-1 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  Upload Failed
+                </h3>
+                <p className="text-red-300 text-sm">{uploadResult.error}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          {/* Save Draft Button - Uploads to IPFS */}
+          <button
+            type="submit"
+            disabled={!isFormValid || isLoading || isMinting || isUploading}
+            className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+              !isFormValid || isLoading || isMinting || isUploading
+                ? "bg-white/5 text-white/30 cursor-not-allowed"
+                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+            }`}
+          >
+            {isUploading ? (
+              <>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Uploading to IPFS...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Save & Upload to IPFS
+              </>
+            )}
+          </button>
+          
+          {/* Mint NFT Button */}
+          <button
+            type="button"
+            onClick={handleMintNFT}
+            disabled={!isFormValid || isLoading || isMinting || isUploading || !backendAvailable}
+            className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+              !isFormValid || isLoading || isMinting || isUploading || !backendAvailable
+                ? "bg-white/5 text-white/30 cursor-not-allowed"
+                : uploadResult?.success
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                  : "bg-white/10 hover:bg-white/20 text-white border border-white/20"
+            }`}
+          >
+            {isMinting ? (
+              <>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Minting...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {uploadResult?.success ? "Mint NFT" : "Upload & Mint"}
+              </>
+            )}
+          </button>
+        </div>
+        
+        {/* Backend Status */}
+        {!backendAvailable && (
+          <p className="text-yellow-400/70 text-sm text-center">
+            ⚠️ Backend not available. Start the backend server to mint NFTs.
+          </p>
+        )}
       </form>
     </motion.div>
   );

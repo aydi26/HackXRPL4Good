@@ -12,8 +12,8 @@ export default function SellerEditModal({ listing, onClose, onSave, isLoading })
     date: "",
     lotNumber: "",
     labo: "",
+    labo_key: "",
     price: "",
-    pricePerKg: true,
     certificate: null
   });
 
@@ -28,8 +28,8 @@ export default function SellerEditModal({ listing, onClose, onSave, isLoading })
         date: listing.date || "",
         lotNumber: listing.lotNumber || "",
         labo: listing.labo || "",
+        labo_key: listing.labo_key || "",
         price: listing.price || "",
-        pricePerKg: listing.pricePerKg !== undefined ? listing.pricePerKg : true,
         certificate: null
       });
       setCertificatePreview(listing.certificateUrl || null);
@@ -78,7 +78,7 @@ export default function SellerEditModal({ listing, onClose, onSave, isLoading })
     if (!formData.weight || parseFloat(formData.weight) <= 0) newErrors.weight = "Weight must be greater than 0";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.lotNumber) newErrors.lotNumber = "Lot number is required";
-    if (!formData.labo) newErrors.labo = "Laboratory is required";
+    if (!formData.labo) newErrors.labo = "Location is required";
     if (!formData.price || parseFloat(formData.price) <= 0) newErrors.price = "Price must be greater than 0";
     
     setErrors(newErrors);
@@ -172,9 +172,9 @@ export default function SellerEditModal({ listing, onClose, onSave, isLoading })
             {errors.date && <p className="text-red-400 text-sm mt-1">{errors.date}</p>}
           </div>
 
-          {/* Laboratory */}
+          {/* Lieu */}
           <div>
-            <label className="block text-white/80 font-medium mb-2">Laboratory *</label>
+            <label className="block text-white/80 font-medium mb-2">Lieu *</label>
             <input
               type="text"
               name="labo"
@@ -187,29 +187,16 @@ export default function SellerEditModal({ listing, onClose, onSave, isLoading })
 
           {/* Price */}
           <div>
-            <label className="block text-white/80 font-medium mb-2">
-              Price {formData.pricePerKg ? "per kg" : "total"} (XRP) *
-            </label>
-            <div className="flex gap-3">
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                min="0"
-                step="0.000001"
-                className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <label className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.pricePerKg}
-                  onChange={(e) => setFormData({ ...formData, pricePerKg: e.target.checked })}
-                  className="w-4 h-4 text-emerald-500"
-                />
-                <span className="text-white/80 text-sm">Per kg</span>
-              </label>
-            </div>
+            <label className="block text-white/80 font-medium mb-2">Price (XRP) *</label>
+            <input
+              type="number"
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              min="0"
+              step="0.000001"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
             {errors.price && <p className="text-red-400 text-sm mt-1">{errors.price}</p>}
           </div>
 
