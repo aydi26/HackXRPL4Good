@@ -1,4 +1,5 @@
 const xrpl = require("xrpl");
+const { randomUUID } = require("crypto");
 
 /**
  * Crée un MPToken Dynamique (XLS-94) avec multi-signature pour le suivi d'un lot.
@@ -14,14 +15,18 @@ const xrpl = require("xrpl");
  * @param {string} laboInfo.address - L'adresse XRPL du laboratoire.
  * @param {string} laboInfo.publicKey - La clé publique du laboratoire.
  * @param {string} laboInfo.name - Le nom du laboratoire (optionnel).
- * @returns {Promise<Object>} { mptID, signerListHash } - ID du MPT et hash de la SignerList.
+ * @returns {Promise<Object>} { mptID, mptUUID, signerListHash } - ID du MPT, UUID unique et hash de la SignerList.
  */
 async function createMPT(client, issuerWallet, lotInfo, laboInfo) {
     console.log(`\n🔗 Initialisation du MPToken pour le lot : ${lotInfo.nftHash.substring(0, 8)}...`);
 
+    // Génération d'un UUID unique pour ce MPT (traçabilité)
+    const mptUUID = randomUUID();
+    console.log(`🆔 UUID généré: ${mptUUID}`);
 
     // 1. Préparation des Métadonnées
     const initialData = {
+        mpt_uuid: mptUUID,  // Identifiant unique pour la traçabilité
         step: 1,
         status: "SALE_INITIATED", 
         nft_hash: lotInfo.nftHash,        
@@ -107,11 +112,13 @@ async function createMPT(client, issuerWallet, lotInfo, laboInfo) {
     
     console.log(`✅ Dynamic MPT créé avec succès !`);
     console.log(`   MPT ID: ${mptID}`);
+    console.log(`   MPT UUID: ${mptUUID}`);
     console.log(`   Flags: Transferable ✓ | Clawback ✓`);
     console.log(`   Multi-Sig: Enabled ✓ (Issuer + Labo)`);
     
     return {
         mptID,
+        mptUUID,  // UUID unique pour la traçabilité
         signerListHash: signerResult.result.hash,
         issuer: issuerWallet.address,
         laboAddress: laboInfo.address
