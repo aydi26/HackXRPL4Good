@@ -1,51 +1,88 @@
+# ----------------------------------------------------------------------
 # Dependencies
+# ----------------------------------------------------------------------
 node_modules/
 .pnp
 .pnp.js
+.pnpm-store/
 
-# Testing
-coverage/
-
-# Production
+# ----------------------------------------------------------------------
+# Build outputs / Production / Temporary
+# ----------------------------------------------------------------------
+# Build / Front-end Specific
 build/
 dist/
+.next/
+out/
+.vercel/
+.turbo/
 
-# Environment variables
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ----------------------------------------------------------------------
+# Environment variables and Sensitive Data (CRUCIAL)
+# ----------------------------------------------------------------------
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
+*.env
+# Private keys and sensitive data
+*.key
+*.pem
+wallet.json
+*.secret
+*_secret.json
+!wallet.example.json # Exception pour un fichier d'exemple si besoin
 
+# ----------------------------------------------------------------------
 # Logs
+# ----------------------------------------------------------------------
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+server.log
 
-# OS
-.DS_Store
-Thumbs.db
+# ----------------------------------------------------------------------
+# Testing
+# ----------------------------------------------------------------------
+coverage/
+.nyc_output/
 
-# IDE
+# ----------------------------------------------------------------------
+# IDE / Editor / OS
+# ----------------------------------------------------------------------
+# IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.sublime-workspace
+*.sublime-project
 
-# Package manager lock files (optionnel)
-# Décommentez si vous voulez ignorer les lock files
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
 
-# Temporary files
-*.tmp
-*.temp
-
-# Private keys and sensitive data
-*.key
-*.pem
-wallet.json
+# Python (pour le backend)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/

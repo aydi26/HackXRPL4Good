@@ -1,0 +1,31 @@
+[dotenv@17.2.3] injecting env (10) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+📋 PINATA_JWT loaded: ✓ Yes
+📋 PINATA_GATEWAY: https://gateway.pinata.cloud
+🚀 Server running on http://localhost:3001
+📤 Upload JSON: test-upload
+✅ JSON uploadé: bafkreihbmtavx2pe3amg57e4eqm6gebp2qwvqmyzsxvfbccppiqyg3743a
+MulterError: Unexpected field
+    at wrappedFileFilter (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/multer@2.0.2/node_modules/multer/index.js:40:19)
+    at Multipart.<anonymous> (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/multer@2.0.2/node_modules/multer/lib/make-middleware.js:132:7)
+    at Multipart.emit (node:events:508:28)
+    at HeaderParser.cb (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:358:14)
+    at HeaderParser.push (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:162:20)
+    at SBMH.ssCb [as _cb] (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:394:37)
+    at feed (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:219:14)
+    at SBMH.push (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:104:16)
+    at Multipart._write (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:567:19)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+Error: Type de fichier non autorisé. Utilisez JPEG, PNG, GIF ou WebP.
+    at fileFilter (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/backend/ipfs/index.js:31:10)
+    at wrappedFileFilter (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/multer@2.0.2/node_modules/multer/index.js:44:7)
+    at Multipart.<anonymous> (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/multer@2.0.2/node_modules/multer/lib/make-middleware.js:132:7)
+    at Multipart.emit (node:events:508:28)
+    at HeaderParser.cb (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:358:14)
+    at HeaderParser.push (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:162:20)
+    at SBMH.ssCb [as _cb] (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:394:37)
+    at feed (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:219:14)
+    at SBMH.push (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/streamsearch@1.1.0/node_modules/streamsearch/lib/sbmh.js:104:16)
+    at Multipart._write (/Users/armandsechon/dev/XRPL/hackathon/HackXRPL4Good/node_modules/.pnpm/busboy@1.6.0/node_modules/busboy/lib/types/multipart.js:567:19)
+📤 Upload image: grands-yeux-chat-obÃ¨se-coquine-en-regardant-la-cible-chat-de-type-britannique-de-cheveux.webp (10200 bytes)
+✅ Image uploadée: bafkreiafy46ppe5kw6de4nrpm2kxhzrisonhs7sxa4lp6ldxzyp3a6selu

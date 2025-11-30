@@ -1,0 +1,38 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "dotenv": "^17.2.3",
+    "events": "^3.3.0",
+    "express": "^5.1.0",
+    "face-api.js": "^0.22.2",
+    "framer-motion": "^12.23.24",
+    "gsap": "^3.13.0",
+    "next": "14.0.4",
+    "postprocessing": "^6.38.0",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
+    "stream-browserify": "^3.0.0",
+    "three": "^0.181.2",
+    "xrpl": "^3.1.0",
+    "xrpl-connect": "^0.4.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.0.4",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0"
+  }
+}
