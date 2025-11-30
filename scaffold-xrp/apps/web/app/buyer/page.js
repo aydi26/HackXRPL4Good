@@ -78,11 +78,11 @@ export default function BuyerPage() {
       href: "/buyer"
     },
     {
-      label: "Transporter",
-      description: "Deliver with traceability",
-      bgColor: "rgba(4, 120, 87, 0.6)",
-      textColor: "#ecfdf5",
-      href: "/transporter"
+      label: "Labo",
+      description: "Validate products",
+      bgColor: "rgba(6, 182, 212, 0.6)",
+      textColor: "#ecfeff",
+      href: "/labo"
     }
   ];
 
