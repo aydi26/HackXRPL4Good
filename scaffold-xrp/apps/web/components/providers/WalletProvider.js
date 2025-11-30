@@ -10,145 +10,276 @@ function log(...args) {
   if (DEBUG) console.log("[WalletProvider]", ...args);
 }
 
-// Clé pour le sessionStorage
-const WALLET_SESSION_KEY = "certichain_wallet_session";
+// ============================================================
+// ÉTAT GLOBAL - Survit aux navigations Next.js
+// ============================================================
+let globalWalletManager = null;
+let globalIsConnected = false;
+let globalAccountInfo = null;
+let globalIsInitialized = false;
+let globalIsAutoConnecting = false;
 
-// Variable globale pour la session (survit aux re-renders)
-let globalSession = null;
+// Clé localStorage pour la persistance
+const WALLET_STORAGE_KEY = "certichain_wallet_session";
+
+// Sauvegarder la session dans localStorage
+function saveSession(accountInfo) {
+  if (typeof window !== "undefined" && accountInfo) {
+    localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify({
+      address: accountInfo.address,
+      network: accountInfo.network,
+      walletName: accountInfo.walletName,
+      timestamp: Date.now(),
+    }));
+    log("Session saved to localStorage");
+  }
+}
+
+// Charger la session depuis localStorage
+function loadSession() {
+  if (typeof window === "undefined") return null;
+  try {
+    const data = localStorage.getItem(WALLET_STORAGE_KEY);
+    if (!data) return null;
+    
+    const session = JSON.parse(data);
+    // Session expire après 24h
+    if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(WALLET_STORAGE_KEY);
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+// Effacer la session
+function clearSession() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(WALLET_STORAGE_KEY);
+    log("Session cleared from localStorage");
+  }
+}
 
 export function WalletProvider({ children }) {
-  const [walletManager, setWalletManagerState] = useState(null);
-  const [isConnected, setIsConnectedState] = useState(false);
-  const [accountInfo, setAccountInfoState] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [statusMessage, setStatusMessage] = useState(null);
-  const [isSessionRestored, setIsSessionRestored] = useState(false);
+  // États locaux - initialisés depuis les globaux
+  const [walletManager, setWalletManager] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [accountInfo, setAccountInfo] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   
-  // Ref pour le manager singleton
-  const managerRef = useRef(null);
+  const mountedRef = useRef(true);
+  const initStartedRef = useRef(false);
 
-  // Restaurer la session au montage (côté client uniquement) - UNE SEULE FOIS
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  // Synchroniser état local avec état global
+  const syncFromGlobal = useCallback(() => {
+    if (globalWalletManager) setWalletManager(globalWalletManager);
+    setIsConnected(globalIsConnected);
+    setAccountInfo(globalAccountInfo);
+    setIsAutoConnecting(globalIsAutoConnecting);
+  }, []);
+
+  // Mettre à jour les deux états (local + global)
+  const updateConnection = useCallback((connected, account) => {
+    log("updateConnection:", connected, account?.address);
     
-    // Si déjà restauré globalement, utiliser les données globales
-    if (globalSession) {
-      log("Using global session:", globalSession);
-      setAccountInfoState(globalSession.accountInfo);
-      setIsConnectedState(true);
-      setIsSessionRestored(true);
+    // Global
+    globalIsConnected = connected;
+    globalAccountInfo = account;
+    
+    // Local
+    if (mountedRef.current) {
+      setIsConnected(connected);
+      setAccountInfo(account);
+    }
+    
+    // Persist
+    if (connected && account) {
+      saveSession(account);
+    } else {
+      clearSession();
+    }
+  }, []);
+
+  // Initialisation
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    const init = async () => {
+      log("=== WalletProvider Init ===");
+      log("globalIsInitialized:", globalIsInitialized);
+      log("globalIsConnected:", globalIsConnected);
+      
+      // Si déjà initialisé globalement, juste synchroniser
+      if (globalIsInitialized) {
+        log("Already initialized, syncing from global");
+        syncFromGlobal();
+        setIsReady(true);
+        return;
+      }
+      
+      // Éviter double init
+      if (initStartedRef.current) {
+        log("Init already started, waiting...");
+        const checkReady = setInterval(() => {
+          if (globalIsInitialized) {
+            clearInterval(checkReady);
+            syncFromGlobal();
+            setIsReady(true);
+          }
+        }, 100);
+        return;
+      }
+      
+      initStartedRef.current = true;
+      log("Starting initialization...");
+
+      try {
+        const { WalletManager, GemWalletAdapter, CrossmarkAdapter } = await import("xrpl-connect");
+
+        const manager = new WalletManager({
+          adapters: [
+            new GemWalletAdapter(),
+            new CrossmarkAdapter(),
+          ],
+          network: "testnet",
+          autoConnect: true, // ACTIVÉ - autoConnect géré par xrpl-connect
+        });
+
+        // Stocker globalement
+        globalWalletManager = manager;
+        if (mountedRef.current) {
+          setWalletManager(manager);
+        }
+
+        // Event listeners
+        manager.on("connect", () => {
+          log("Event: connect");
+          globalIsAutoConnecting = false;
+          if (mountedRef.current) setIsAutoConnecting(false);
+          
+          const account = manager.account;
+          const wallet = manager.wallet;
+          
+          if (account && wallet) {
+            updateConnection(true, {
+              address: account.address,
+              network: account.network?.name || "testnet",
+              walletName: wallet.name,
+            });
+          }
+        });
+
+        manager.on("disconnect", () => {
+          log("Event: disconnect");
+          updateConnection(false, null);
+        });
+
+        manager.on("error", (error) => {
+          console.error("Wallet error:", error);
+          globalIsAutoConnecting = false;
+          if (mountedRef.current) setIsAutoConnecting(false);
+        });
+
+        // Vérifier s'il y a une session sauvegardée pour indiquer un autoConnect en cours
+        const savedSession = loadSession();
+        if (savedSession) {
+          log("Found saved session, autoConnect should restore it");
+          globalIsAutoConnecting = true;
+          if (mountedRef.current) setIsAutoConnecting(true);
+          
+          // Timeout de sécurité - si autoConnect échoue après 5s
+          setTimeout(() => {
+            if (globalIsAutoConnecting && !globalIsConnected) {
+              log("AutoConnect timeout - clearing session");
+              globalIsAutoConnecting = false;
+              if (mountedRef.current) setIsAutoConnecting(false);
+              clearSession();
+            }
+          }, 5000);
+        }
+
+        // Attendre un peu pour laisser autoConnect faire son travail
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Vérifier si autoConnect a fonctionné
+        if (manager.connected && manager.account) {
+          log("AutoConnect succeeded");
+          const account = manager.account;
+          const wallet = manager.wallet;
+          updateConnection(true, {
+            address: account.address,
+            network: account.network?.name || "testnet",
+            walletName: wallet.name,
+          });
+          globalIsAutoConnecting = false;
+          if (mountedRef.current) setIsAutoConnecting(false);
+        }
+
+        globalIsInitialized = true;
+        if (mountedRef.current) {
+          setIsReady(true);
+        }
+        log("✓ Initialization complete");
+        
+      } catch (error) {
+        console.error("Failed to initialize WalletManager:", error);
+        globalIsAutoConnecting = false;
+        if (mountedRef.current) {
+          setIsAutoConnecting(false);
+          setIsReady(true);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [syncFromGlobal, updateConnection]);
+
+  // Connect - seul endroit où popup s'ouvre
+  const connect = useCallback(async (walletId) => {
+    if (!walletManager && !globalWalletManager) {
+      console.error("WalletManager not ready");
       return;
     }
-    
+    const manager = walletManager || globalWalletManager;
+    log("Manual connect requested:", walletId);
     try {
-      const savedSession = sessionStorage.getItem(WALLET_SESSION_KEY);
-      if (savedSession) {
-        const session = JSON.parse(savedSession);
-        log("Restored session from storage:", session);
-        
-        // Vérifier que la session n'est pas trop vieille (24h max)
-        const age = Date.now() - (session.timestamp || 0);
-        if (age < 24 * 60 * 60 * 1000 && session.accountInfo) {
-          globalSession = session;
-          setAccountInfoState(session.accountInfo);
-          setIsConnectedState(true);
-          log("✓ Session restored successfully");
-        } else {
-          log("Session expired or invalid, clearing");
-          sessionStorage.removeItem(WALLET_SESSION_KEY);
-        }
-      } else {
-        log("No saved session found");
-      }
-    } catch (e) {
-      log("Failed to restore session:", e);
+      await manager.connect(walletId);
+    } catch (error) {
+      console.error("Connection failed:", error);
     }
-    
-    setIsSessionRestored(true);
-  }, []);
+  }, [walletManager]);
 
-  const setWalletManager = useCallback((manager) => {
-    log("setWalletManager called");
-    managerRef.current = manager;
-    setWalletManagerState(manager);
-  }, []);
-
-  const setIsConnected = useCallback((connected) => {
-    log("setIsConnected:", connected);
-    setIsConnectedState(connected);
-    
-    // Si déconnexion, vider la session globale
-    if (!connected) {
-      globalSession = null;
+  // Disconnect
+  const disconnect = useCallback(async () => {
+    if (!walletManager && !globalWalletManager) return;
+    const manager = walletManager || globalWalletManager;
+    log("Disconnect requested");
+    try {
+      await manager.disconnect();
+    } catch (error) {
+      console.error("Disconnect failed:", error);
     }
-  }, []);
-
-  const setAccountInfo = useCallback((info) => {
-    log("setAccountInfo:", info);
-    setAccountInfoState(info);
-    
-    // Mettre à jour la session globale
-    if (info) {
-      globalSession = {
-        accountInfo: info,
-        timestamp: Date.now()
-      };
-    } else {
-      globalSession = null;
-    }
-    
-    // Persister dans sessionStorage
-    if (typeof window !== 'undefined') {
-      try {
-        if (info) {
-          sessionStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({
-            accountInfo: info,
-            timestamp: Date.now()
-          }));
-          log("Session saved to storage");
-        } else {
-          sessionStorage.removeItem(WALLET_SESSION_KEY);
-          log("Session cleared from storage");
-        }
-      } catch (e) {
-        log("Failed to save session:", e);
-      }
-    }
-  }, []);
-
-  const addEvent = useCallback((name, data) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setEvents((prev) => [{ timestamp, name, data }, ...prev]);
-  }, []);
-
-  const clearEvents = useCallback(() => {
-    setEvents([]);
-  }, []);
-
-  const showStatus = useCallback((message, type) => {
-    setStatusMessage({ message, type });
-    setTimeout(() => {
-      setStatusMessage(null);
-    }, 5000);
-  }, []);
-
-  log("Render - isConnected:", isConnected, "accountInfo:", accountInfo?.address, "isSessionRestored:", isSessionRestored);
+    // Toujours mettre à jour l'état
+    updateConnection(false, null);
+  }, [walletManager, updateConnection]);
 
   return (
     <WalletContext.Provider
       value={{
-        walletManager: walletManager || managerRef.current,
+        walletManager: walletManager || globalWalletManager,
         isConnected,
         accountInfo,
-        events,
-        statusMessage,
-        isSessionRestored,
-        setWalletManager,
-        setIsConnected,
-        setAccountInfo,
-        addEvent,
-        clearEvents,
-        showStatus,
+        isReady,
+        isAutoConnecting,
+        connect,
+        disconnect,
       }}
     >
       {children}

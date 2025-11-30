@@ -3,57 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useWallet } from "./providers/WalletProvider";
 
-// Debug
-const DEBUG = true;
-function log(...args) {
-  if (DEBUG) console.log("[WalletConnectorComponent]", ...args);
-}
-
-// Tracker global pour éviter les setups multiples
-let connectorSetupDone = false;
-
-const THEMES = {
-  dark: {
-    "--xc-background-color": "#1a202c",
-    "--xc-background-secondary": "#2d3748",
-    "--xc-background-tertiary": "#4a5568",
-    "--xc-text-color": "#F5F4E7",
-    "--xc-text-muted-color": "rgba(245, 244, 231, 0.6)",
-    "--xc-primary-color": "#3b99fc",
-  },
-  light: {
-    "--xc-background-color": "#ffffff",
-    "--xc-background-secondary": "#f5f5f5",
-    "--xc-background-tertiary": "#eeeeee",
-    "--xc-text-color": "#111111",
-    "--xc-text-muted-color": "rgba(17, 17, 17, 0.6)",
-    "--xc-primary-color": "#2563eb",
-  },
-  purple: {
-    "--xc-background-color": "#1e1b4b",
-    "--xc-background-secondary": "#2d2659",
-    "--xc-background-tertiary": "#3d3261",
-    "--xc-text-color": "#f3e8ff",
-    "--xc-text-muted-color": "rgba(243, 232, 255, 0.6)",
-    "--xc-primary-color": "#a78bfa",
-  },
-  emerald: {
-    "--xc-background-color": "#022c22",
-    "--xc-background-secondary": "#064e3b",
-    "--xc-background-tertiary": "#065f46",
-    "--xc-text-color": "#ecfdf5",
-    "--xc-text-muted-color": "rgba(236, 253, 245, 0.6)",
-    "--xc-primary-color": "#10b981",
-  },
-};
-
 export function WalletConnector() {
-  const { walletManager, addEvent, showStatus } = useWallet();
+  const { walletManager } = useWallet();
   const walletConnectorRef = useRef(null);
-  const [currentTheme] = useState("emerald");
   const [isClient, setIsClient] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const localSetupRef = useRef(false);
+  const setupDoneRef = useRef(false);
 
   // Register web component on client
   useEffect(() => {
@@ -61,14 +16,10 @@ export function WalletConnector() {
 
     const registerWebComponent = async () => {
       try {
-        log("Registering web component...");
         const { WalletConnectorElement } = await import("xrpl-connect");
 
         if (!customElements.get("xrpl-wallet-connector")) {
           customElements.define("xrpl-wallet-connector", WalletConnectorElement);
-          log("✓ Web component registered");
-        } else {
-          log("Web component already registered");
         }
         setIsReady(true);
       } catch (error) {
@@ -79,90 +30,42 @@ export function WalletConnector() {
     registerWebComponent();
   }, []);
 
-  // Setup wallet manager on connector when both are ready
+  // Setup wallet manager on connector
   useEffect(() => {
-    log("Setup effect - isReady:", isReady, "walletManager:", !!walletManager, "ref:", !!walletConnectorRef.current, "localSetup:", localSetupRef.current);
-    
-    if (!isReady || !walletManager || !walletConnectorRef.current) {
-      return;
-    }
-    
-    // Éviter les setups multiples pour ce composant
-    if (localSetupRef.current) {
-      log("Local setup already done");
+    if (!isReady || !walletManager || !walletConnectorRef.current || setupDoneRef.current) {
       return;
     }
 
     const setupConnector = async () => {
-      log("Setting up connector with wallet manager...");
-      
       await customElements.whenDefined("xrpl-wallet-connector");
-      
-      // Attendre que l'élément soit complètement initialisé
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const element = walletConnectorRef.current;
       
       if (element && typeof element.setWalletManager === "function") {
-        log("Calling setWalletManager on element");
         element.setWalletManager(walletManager);
-        localSetupRef.current = true;
-
-        // Event listeners - seulement si pas déjà fait globalement
-        if (!connectorSetupDone) {
-          const handleConnecting = (e) => {
-            log("Event: connecting", e.detail);
-            showStatus(`Connexion à ${e.detail?.walletId || 'wallet'}...`, "info");
-          };
-
-          const handleConnected = (e) => {
-            log("Event: connected", e.detail);
-            showStatus("Connecté avec succès!", "success");
-            addEvent("Connected", e.detail);
-          };
-
-          const handleError = (e) => {
-            log("Event: error", e.detail);
-            showStatus(`Échec de connexion: ${e.detail?.error?.message || 'Erreur inconnue'}`, "error");
-            addEvent("Error", e.detail);
-          };
-
-          const handleDisconnected = (e) => {
-            log("Event: disconnected");
-            addEvent("Disconnected", null);
-          };
-
-          element.addEventListener("connecting", handleConnecting);
-          element.addEventListener("connected", handleConnected);
-          element.addEventListener("error", handleError);
-          element.addEventListener("disconnected", handleDisconnected);
-          
-          connectorSetupDone = true;
-          log("✓ Connector event listeners attached");
-        }
-
-        log("✓ Connector setup complete with wallet manager");
-      } else {
-        log("⚠ setWalletManager not available, element:", element);
-        log("Element methods:", element ? Object.keys(element) : 'null');
+        setupDoneRef.current = true;
       }
     };
 
     setupConnector();
-  }, [isReady, walletManager, addEvent, showStatus]);
+  }, [isReady, walletManager]);
 
   if (!isClient) {
     return null;
   }
-
-  log("Rendering - isReady:", isReady, "walletManager:", !!walletManager);
 
   return (
     <xrpl-wallet-connector
       ref={walletConnectorRef}
       id="wallet-connector"
       style={{
-        ...THEMES[currentTheme],
+        "--xc-background-color": "#022c22",
+        "--xc-background-secondary": "#064e3b",
+        "--xc-background-tertiary": "#065f46",
+        "--xc-text-color": "#ecfdf5",
+        "--xc-text-muted-color": "rgba(236, 253, 245, 0.6)",
+        "--xc-primary-color": "#10b981",
         "--xc-font-family": "inherit",
         "--xc-border-radius": "12px",
         "--xc-modal-box-shadow": "0 10px 40px rgba(0, 0, 0, 0.3)",
@@ -171,3 +74,5 @@ export function WalletConnector() {
     />
   );
 }
+
+export default WalletConnector;

@@ -7,18 +7,23 @@ import CardNav from "../../components/landing/CardNav";
 import Footer from "../../components/landing/Footer";
 import WalletButton from "../../components/landing/WalletButton";
 import WalletConnectionScreen from "../../components/WalletConnectionScreen";
+import LoadingScreen from "../../components/LoadingScreen";
+import AccessDeniedScreen from "../../components/AccessDeniedScreen";
 import SellerCreateListingForm from "../../components/seller/SellerCreateListingForm";
 import SellerListingsSidebar from "../../components/seller/SellerListingsSidebar";
 import SellerListingDetails from "../../components/seller/SellerListingDetails";
 import SellerEditModal from "../../components/seller/SellerEditModal";
 import DeleteConfirmationModal from "../../components/seller/DeleteConfirmationModal";
 import { useWallet } from "../../components/providers/WalletProvider";
+import { useCredentialContext } from "../../components/providers/CredentialProvider";
 
-// Bypass wallet check - set to false to require wallet connection
-const BYPASS_WALLET_CHECK = true;
+// Required credential for this page
+const REQUIRED_CREDENTIAL = "SELLER";
 
 export default function SellerPage() {
-  const { isConnected, accountInfo, isSessionRestored } = useWallet();
+  const { isConnected, accountInfo, isReady, isAutoConnecting } = useWallet();
+  const { hasAccess, isLoading: isCredentialLoading, isInitialized: isCredentialInitialized } = useCredentialContext();
+  
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
@@ -28,8 +33,8 @@ export default function SellerPage() {
   const [listingToDelete, setListingToDelete] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(true);
 
-  // Check if user can access (bypass or connected)
-  const canAccess = BYPASS_WALLET_CHECK || (isSessionRestored && (isConnected || accountInfo));
+  // Check credential access
+  const hasSellerCredential = hasAccess("seller");
 
   const navItems = [
     {
@@ -40,11 +45,11 @@ export default function SellerPage() {
       href: "/seller"
     },
     {
-      label: "Producer", 
-      description: "Validate offers",
+      label: "Buyer", 
+      description: "Buy certified products",
       bgColor: "rgba(6, 95, 70, 0.6)",
       textColor: "#ecfdf5",
-      href: "/producer"
+      href: "/buyer"
     },
     {
       label: "Transporter",
@@ -406,7 +411,18 @@ export default function SellerPage() {
     setShowDetails(true);
   };
 
-  if (!canAccess) {
+  // STATE 1: Wallet manager not ready yet OR autoConnecting
+  if (!isReady || isAutoConnecting) {
+    return (
+      <LoadingScreen 
+        message="Connecting to wallet..."
+        subMessage="Please wait while we restore your session"
+      />
+    );
+  }
+
+  // STATE 2: Wallet not connected - show connection screen
+  if (!isConnected || !accountInfo) {
     const SellerIcon = () => (
       <svg className="w-12 h-12 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -467,6 +483,30 @@ export default function SellerPage() {
       </div>
     );
   }
+
+  // STATE 3: Credentials are loading
+  if (isCredentialLoading || !isCredentialInitialized) {
+    return (
+      <LoadingScreen 
+        message="Verifying credentials..."
+        subMessage="Checking your access permissions on XRPL"
+      />
+    );
+  }
+
+  // STATE 4: No seller credential - access denied
+  if (!hasSellerCredential) {
+    return (
+      <AccessDeniedScreen 
+        requiredCredential={REQUIRED_CREDENTIAL}
+        walletAddress={accountInfo?.address}
+        title="Access Denied"
+        subtitle="Seller Credential Required"
+      />
+    );
+  }
+
+  // STATE 5: Has access - show the page
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f]">

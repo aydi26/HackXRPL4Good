@@ -43,7 +43,7 @@ const CredentialContext = createContext(undefined);
  * @param {React.ReactNode} props.children - Composants enfants
  */
 export function CredentialProvider({ children }) {
-  const { accountInfo, isConnected, walletManager } = useWallet();
+  const { accountInfo, isConnected, walletManager, isReady } = useWallet();
   
   // State
   const [credentials, setCredentials] = useState([]);
@@ -67,6 +67,7 @@ export function CredentialProvider({ children }) {
 
   log("=== Render ===");
   log("isConnected:", isConnected);
+  log("isReady:", isReady);
   log("walletAddress:", walletAddress);
   log("isLoading:", isLoading);
   log("isInitialized:", isInitialized);
@@ -227,46 +228,40 @@ export function CredentialProvider({ children }) {
 
   // Effet principal : fetch credentials quand wallet change
   useEffect(() => {
-    log("Main effect - walletAddress:", walletAddress, "isInitialized:", isInitialized);
+    log("Main effect - isReady:", isReady, "walletAddress:", walletAddress, "isInitialized:", isInitialized);
+    
+    // Attendre que le wallet manager soit prêt
+    if (!isReady) {
+      log("Waiting for wallet manager...");
+      return;
+    }
     
     if (walletAddress) {
       // On a une adresse, fetch les credentials
       fetchCredentials();
     } else {
-      // Pas d'adresse
-      if (isConnected === false) {
-        // Explicitement déconnecté, reset tout
-        log("Wallet explicitly disconnected, resetting");
-        setCredentials([]);
-        setAccessMap({
-          [CREDENTIAL_TYPES.BUYER]: false,
-          [CREDENTIAL_TYPES.SELLER]: false,
-          [CREDENTIAL_TYPES.LABO]: false,
-          [CREDENTIAL_TYPES.TRANSPORTER]: false,
-        });
-        setError(null);
-        setIsLoading(false);
-        setIsInitialized(true);
-        // Vider le cache
-        credentialsCache = {
-          walletAddress: null,
-          accessMap: null,
-          credentials: [],
-          timestamp: 0,
-        };
-      } else {
-        // Pas encore d'adresse, attendre un peu
-        const timeout = setTimeout(() => {
-          if (!walletAddress) {
-            log("Timeout: still no wallet address, marking initialized");
-            setIsLoading(false);
-            setIsInitialized(true);
-          }
-        }, 1500);
-        return () => clearTimeout(timeout);
-      }
+      // Pas d'adresse, reset
+      log("No wallet connected, resetting");
+      setCredentials([]);
+      setAccessMap({
+        [CREDENTIAL_TYPES.BUYER]: false,
+        [CREDENTIAL_TYPES.SELLER]: false,
+        [CREDENTIAL_TYPES.PRODUCER]: false,
+        [CREDENTIAL_TYPES.LABO]: false,
+        [CREDENTIAL_TYPES.TRANSPORTER]: false,
+      });
+      setError(null);
+      setIsLoading(false);
+      setIsInitialized(true);
+      // Vider le cache
+      credentialsCache = {
+        walletAddress: null,
+        accessMap: null,
+        credentials: [],
+        timestamp: 0,
+      };
     }
-  }, [walletAddress, isConnected, fetchCredentials]);
+  }, [walletAddress, isReady, fetchCredentials]);
 
   // Cleanup
   useEffect(() => {

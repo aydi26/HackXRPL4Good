@@ -17,11 +17,11 @@ export default function Home() {
       href: "/seller"
     },
     {
-      label: "Producer", 
-      description: "Validate offers",
+      label: "Buyer", 
+      description: "Buy certified products",
       bgColor: "rgba(6, 95, 70, 0.6)",
       textColor: "#ecfdf5",
-      href: "/producer"
+      href: "/buyer"
     },
     {
       label: "Transporter",
