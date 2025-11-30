@@ -8,7 +8,11 @@ import { WalletInitializer } from "../components/WalletInitializer";
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-[#0a0a0f]">
+      <body className="bg-[#0a0a0f]" onLoad={() => {
+        if (typeof document !== 'undefined') {
+          document.body.classList.add('loaded');
+        }
+      }}>
         <WalletProvider>
           <WalletInitializer>
             <CredentialProvider>

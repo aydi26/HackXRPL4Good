@@ -123,7 +123,34 @@ export function WalletConnector() {
 
           const handleError = (e) => {
             log("Event: error", e.detail);
-            showStatus(`Échec de connexion: ${e.detail?.error?.message || 'Erreur inconnue'}`, "error");
+            const errorDetail = e.detail;
+            let errorMessage = "Échec de connexion";
+            
+            if (errorDetail?.error) {
+              if (errorDetail.error.message) {
+                errorMessage = errorDetail.error.message;
+              } else if (typeof errorDetail.error === 'string') {
+                errorMessage = errorDetail.error;
+              }
+            }
+            
+            // Messages spécifiques pour GemWallet
+            const walletId = errorDetail?.walletId?.toLowerCase() || '';
+            const lowerError = errorMessage.toLowerCase();
+            
+            if (walletId.includes('gem') || lowerError.includes('gem')) {
+              if (lowerError.includes('not found') || lowerError.includes('not installed') || lowerError.includes('extension')) {
+                errorMessage = "GemWallet n'est pas installé. Veuillez installer l'extension GemWallet depuis le Chrome Web Store ou Firefox Add-ons.";
+              } else if (lowerError.includes('rejected') || lowerError.includes('denied') || lowerError.includes('user')) {
+                errorMessage = "Connexion refusée. Veuillez autoriser la connexion dans la popup GemWallet.";
+              } else if (lowerError.includes('timeout') || lowerError.includes('timed out')) {
+                errorMessage = "Délai d'attente dépassé. Veuillez réessayer la connexion.";
+              } else if (lowerError.includes('network') || lowerError.includes('connection')) {
+                errorMessage = "Erreur de réseau avec GemWallet. Vérifiez votre connexion internet.";
+              }
+            }
+            
+            showStatus(errorMessage, "error");
             addEvent("Error", e.detail);
           };
 

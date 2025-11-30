@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,11 +8,17 @@
   body {
     @apply text-white bg-[#0a0a0f];
     overflow-x: hidden;
+    font-family: 'Work Sans', sans-serif;
   }
 
   html {
     scroll-behavior: smooth;
     background-color: #0a0a0f;
+    font-family: 'Work Sans', sans-serif;
+  }
+
+  * {
+    font-family: 'Work Sans', sans-serif;
   }
 }
 
@@ -81,6 +89,43 @@
 
   .glass-dark {
     @apply bg-black/30 backdrop-blur-md border border-white/10;
+  }
+
+  /* Date picker styling */
+  input[type="date"] {
+    color-scheme: dark;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
+
+  /* Remove number input arrows */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Fallback pour les animations - s'assurer que le contenu est visible */
+  [data-framer-motion] {
+    opacity: 1 !important;
+  }
+
+  /* S'assurer que les éléments avec opacity:0 initiale deviennent visibles */
+  body.loaded [style*="opacity:0"] {
+    animation: fadeIn 0.5s ease-in forwards;
+  }
+
+  @keyframes fadeIn {
+    to {
+      opacity: 1 !important;
+    }
   }
 }
 
