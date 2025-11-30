@@ -1,7 +1,16 @@
 {
-	"dependencies": {
-		"multer": "^2.0.2",
-		"axios": "^1.13.2",
-		"form-data": "^4.0.5"
-	}
+  "name": "HackXRPL4Good",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd scaffold-xrp/apps/web && npm run dev",
+    "build": "cd scaffold-xrp/apps/web && npm run build",
+    "start": "cd scaffold-xrp/apps/web && npm run start",
+    "lint": "cd scaffold-xrp/apps/web && npm run lint"
+  },
+  "dependencies": {
+    "multer": "^2.0.2",
+    "axios": "^1.13.2",
+    "form-data": "^4.0.5"
+  }
 }

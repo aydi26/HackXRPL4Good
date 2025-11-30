@@ -1,8 +1,8 @@
 /**
- * Page d'accès non autorisé
+ * Unauthorized Access Page
  * 
- * Affichée quand un utilisateur tente d'accéder à une route protégée
- * sans posséder le credential requis.
+ * Displayed when a user attempts to access a protected route
+ * without possessing the required credential.
  */
 
 "use client";
@@ -17,7 +17,7 @@ export default function UnauthorizedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Récupérer le type de credential requis depuis l'URL
+  // Get required credential type from URL
   const requiredType = searchParams.get("required");
   const credentialInfo = requiredType ? CREDENTIAL_INFO[requiredType] : null;
 
@@ -68,11 +68,11 @@ export default function UnauthorizedPage() {
             </motion.div>
             
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Accès Non Autorisé
+              Unauthorized Access
             </h1>
             
             <p className="text-xl text-white/60">
-              Vous ne possédez pas le credential requis pour accéder à cette section.
+              You do not possess the required credential to access this section.
             </p>
           </div>
 
@@ -83,11 +83,11 @@ export default function UnauthorizedPage() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="p-8 rounded-2xl bg-white/5 border border-red-500/20 backdrop-blur-sm"
           >
-            {/* Credential requis */}
+            {/* Required Credential */}
             {credentialInfo && (
               <div className="mb-8 p-4 rounded-xl bg-white/5 border border-white/10">
                 <p className="text-sm text-white/40 mb-3 text-center">
-                  Credential requis pour cette section :
+                  Credential required for this section:
                 </p>
                 <div className="flex items-center justify-center gap-4">
                   <span className="text-4xl">{credentialInfo.icon}</span>
@@ -103,40 +103,40 @@ export default function UnauthorizedPage() {
               </div>
             )}
 
-            {/* Comment obtenir un credential */}
+            {/* How to obtain a credential */}
             <div className="mb-8">
               <h2 className="text-xl font-bold text-white mb-4 text-center">
-                Comment obtenir un credential ?
+                How to obtain a credential?
               </h2>
               
               <div className="space-y-4">
                 <Step 
                   number={1} 
-                  title="Contacter un auditeur"
-                  description="Prenez contact avec une entreprise d'audit partenaire de CertiChain."
+                  title="Contact an auditor"
+                  description="Get in touch with an audit company partnered with CertiChain."
                 />
                 <Step 
                   number={2} 
-                  title="Passer l'audit"
-                  description="L'auditeur vérifiera votre activité et votre conformité pour le rôle souhaité."
+                  title="Pass the audit"
+                  description="The auditor will verify your activity and compliance for the desired role."
                 />
                 <Step 
                   number={3} 
-                  title="Transmission de l'adresse"
-                  description="Une fois validé, l'auditeur nous transmet votre adresse wallet."
+                  title="Address transmission"
+                  description="Once validated, the auditor transmits your wallet address to us."
                 />
                 <Step 
                   number={4} 
-                  title="Émission du credential"
-                  description="Nous créons le Verifiable Credential sur le ledger XRPL, lié à votre wallet."
+                  title="Credential issuance"
+                  description="We create the Verifiable Credential on the XRPL ledger, linked to your wallet."
                 />
               </div>
             </div>
 
-            {/* Types de credentials disponibles */}
+            {/* Available credential types */}
             <div className="mb-8">
               <h3 className="text-lg font-semibold text-white/80 mb-4 text-center">
-                Types de credentials disponibles
+                Available credential types
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 {Object.values(CREDENTIAL_TYPES).map((type) => {
@@ -154,19 +154,19 @@ export default function UnauthorizedPage() {
               </div>
             </div>
 
-            {/* Boutons d'action */}
+            {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => router.push("/")}
                 className="px-8 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors font-medium"
               >
-                ← Retour à l'accueil
+                ← Back to home
               </button>
               <button
                 onClick={() => router.push("/contact")}
                 className="px-8 py-3 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-medium"
               >
-                Contacter un auditeur
+                Contact an auditor
               </button>
             </div>
           </motion.div>
@@ -179,7 +179,7 @@ export default function UnauthorizedPage() {
 }
 
 /**
- * Composant étape
+ * Step component
  */
 function Step({ number, title, description }) {
   return (

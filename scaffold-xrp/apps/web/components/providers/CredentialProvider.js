@@ -1,8 +1,8 @@
 /**
- * Provider de contexte pour les Verifiable Credentials
+ * Context provider for Verifiable Credentials
  * 
- * Ce provider wrappe l'application et fournit l'état des credentials
- * à tous les composants enfants via React Context.
+ * This provider wraps the application and provides credential state
+ * to all child components via React Context.
  */
 
 "use client";
@@ -45,11 +45,12 @@ const CredentialContext = createContext(undefined);
 export function CredentialProvider({ children }) {
   const { accountInfo, isConnected, walletManager } = useWallet();
   
-  // État
+  // State
   const [credentials, setCredentials] = useState([]);
   const [accessMap, setAccessMap] = useState({
     [CREDENTIAL_TYPES.BUYER]: false,
     [CREDENTIAL_TYPES.SELLER]: false,
+    [CREDENTIAL_TYPES.PRODUCER]: false,
     [CREDENTIAL_TYPES.LABO]: false,
     [CREDENTIAL_TYPES.TRANSPORTER]: false,
   });
@@ -72,7 +73,7 @@ export function CredentialProvider({ children }) {
   log("cache:", credentialsCache);
 
   /**
-   * Récupère les credentials depuis le ledger XRPL
+   * Fetches credentials from the XRPL ledger
    */
   const fetchCredentials = useCallback(async (forceRefresh = false) => {
     log("fetchCredentials called - walletAddress:", walletAddress, "forceRefresh:", forceRefresh);
@@ -83,6 +84,7 @@ export function CredentialProvider({ children }) {
       setAccessMap({
         [CREDENTIAL_TYPES.BUYER]: false,
         [CREDENTIAL_TYPES.SELLER]: false,
+        [CREDENTIAL_TYPES.PRODUCER]: false,
         [CREDENTIAL_TYPES.LABO]: false,
         [CREDENTIAL_TYPES.TRANSPORTER]: false,
       });
@@ -194,13 +196,14 @@ export function CredentialProvider({ children }) {
   );
 
   /**
-   * Vérifie l'accès à une section
+   * Checks access to a section
    */
   const hasAccess = useCallback(
     (section) => {
       const typeMap = {
         buyer: CREDENTIAL_TYPES.BUYER,
         seller: CREDENTIAL_TYPES.SELLER,
+        producer: CREDENTIAL_TYPES.PRODUCER,
         labo: CREDENTIAL_TYPES.LABO,
         transporter: CREDENTIAL_TYPES.TRANSPORTER,
       };
@@ -210,12 +213,13 @@ export function CredentialProvider({ children }) {
   );
 
   /**
-   * Retourne les sections accessibles
+   * Returns accessible sections
    */
   const getAccessibleSections = useCallback(() => {
     const sections = [];
     if (accessMap[CREDENTIAL_TYPES.BUYER]) sections.push("buyer");
     if (accessMap[CREDENTIAL_TYPES.SELLER]) sections.push("seller");
+    if (accessMap[CREDENTIAL_TYPES.PRODUCER]) sections.push("producer");
     if (accessMap[CREDENTIAL_TYPES.LABO]) sections.push("labo");
     if (accessMap[CREDENTIAL_TYPES.TRANSPORTER]) sections.push("transporter");
     return sections;

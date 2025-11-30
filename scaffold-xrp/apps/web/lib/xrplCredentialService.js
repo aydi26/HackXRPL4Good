@@ -1,8 +1,8 @@
 /**
- * Service XRPL pour la gestion des Verifiable Credentials
+ * XRPL Service for Verifiable Credentials management
  * 
- * Ce service permet de vérifier les credentials des utilisateurs
- * directement sur le ledger XRPL.
+ * This service allows verifying user credentials
+ * directly on the XRPL ledger.
  */
 
 import { Client } from "xrpl";

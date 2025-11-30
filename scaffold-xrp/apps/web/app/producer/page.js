@@ -7,15 +7,15 @@ import CardNav from "../../components/landing/CardNav";
 import Footer from "../../components/landing/Footer";
 import WalletButton from "../../components/landing/WalletButton";
 import WalletConnectionScreen from "../../components/WalletConnectionScreen";
-import TransporterOffersList from "../../components/transporter/TransporterOffersList";
-import TransporterOfferDetails from "../../components/transporter/TransporterOfferDetails";
-import TransporterAcceptRejectModal from "../../components/transporter/TransporterAcceptRejectModal";
+import ProducerOffersList from "../../components/producer/ProducerOffersList";
+import ProducerOfferDetails from "../../components/producer/ProducerOfferDetails";
+import ProducerAcceptRejectModal from "../../components/producer/ProducerAcceptRejectModal";
 import { useWallet } from "../../components/providers/WalletProvider";
 
 // Bypass wallet check - set to false to require wallet connection
 const BYPASS_WALLET_CHECK = true;
 
-export default function TransporterPage() {
+export default function ProducerPage() {
   const { isConnected, accountInfo, isSessionRestored } = useWallet();
   const [offers, setOffers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,72 +57,85 @@ export default function TransporterPage() {
     </a>
   );
 
-  // Load offers from marketplace (all listings from all sellers)
+  // Load all marketplace listings (public marketplace)
   useEffect(() => {
-    // Load all marketplace listings
-    const marketplaceListings = localStorage.getItem("marketplaceListings");
-    
-    if (marketplaceListings) {
+    const loadListings = async () => {
+      // TODO: In production, fetch listings from NFTs on the ledger
+      // For now, use localStorage as fallback
+      /*
       try {
-        const allListings = JSON.parse(marketplaceListings);
-        // Convert listings to transport offers (only producer-validated and ready)
-        // Transporters can see all listings that are ready for transport
-        const transportOffers = allListings
-          .filter(listing => 
-            listing.isPublic !== false &&
-            (listing.status === "producer-validated" || 
-            listing.status === "producer-transporter-validated" ||
-            listing.status === "transport-accepted" ||
-            listing.status === "in-transit" ||
-            listing.status === "completed")
-          )
-          .map(listing => ({
-            id: listing.id,
-            productType: listing.productType,
-            weight: listing.weight,
-            date: listing.date,
-            lotNumber: listing.lotNumber,
-            price: listing.price,
-            pricePerKg: listing.pricePerKg,
-            labo: listing.labo,
-            distance: Math.floor(Math.random() * 500) + 50, // Placeholder distance
-            transportPrice: (Math.random() * 10 + 5).toFixed(2), // Placeholder transport price
-            sellerValidated: true,
-            producerValidated: listing.status !== "pending",
-            producerValidation: listing.producerValidation,
-            transporterValidation: listing.transporterValidation,
-            sellerAddress: listing.sellerAddress || "unknown",
-            sellerName: listing.sellerName || "Seller",
-            status: listing.status === "producer-validated" 
-              ? "ready-for-transport"
-              : listing.status === "producer-transporter-validated"
-              ? "ready-for-transport"
-              : listing.status === "transport-accepted"
-              ? "transport-accepted"
-              : listing.status === "in-transit"
-              ? "in-transit"
-              : listing.status === "completed"
-              ? "completed"
-              : "ready-for-transport",
-            createdAt: listing.createdAt
-          }));
-        setOffers(transportOffers);
-      } catch (e) {
-        console.error("Error loading transport offers:", e);
+        const { getAllMarketplaceListings, getProducers } = await import("../../lib/marketplaceService");
+        
+        // Get all Producer credentials to verify access
+        const producersResult = await getProducers();
+        if (producersResult.success && producersResult.producers) {
+          // Check if current user is a Producer
+          const isProducer = producersResult.producers.some(
+            p => p.walletAddress === accountInfo?.address
+          );
+          
+          if (isProducer) {
+            // Fetch all listings from NFTs
+            // In production, maintain a registry of Seller addresses
+            const sellerAddresses = []; // Get from registry or database
+            const listingsResult = await getAllMarketplaceListings(sellerAddresses);
+            
+            if (listingsResult.success) {
+              const producerOffers = listingsResult.listings
+                .filter(listing => 
+                  listing.isPublic !== false &&
+                  (listing.status === "pending" || 
+                   listing.status === "producer-validated" ||
+                   listing.status === "producer-transporter-validated" ||
+                   listing.status === "cancelled")
+                )
+                .map(listing => ({
+                  id: listing.id,
+                  productType: listing.productType,
+                  weight: listing.weight,
+                  date: listing.date,
+                  lotNumber: listing.lotNumber,
+                  price: listing.price,
+                  pricePerKg: listing.pricePerKg,
+                  certificateUrl: listing.certificateUrl,
+                  sellerAddress: listing.sellerAddress || "unknown",
+                  sellerName: listing.sellerName || "Seller",
+                  labo: listing.labo,
+                  nftTokenId: listing.nftTokenId,
+                  status: listing.status === "pending" ? "pending" : 
+                         listing.status === "producer-validated" ? "accepted" :
+                         listing.status === "cancelled" ? "rejected" : "accepted",
+                  createdAt: listing.createdAt,
+                  producerValidation: listing.producerValidation,
+                  traceabilityInfo: listing.traceabilityInfo || null
+                }));
+              
+              setOffers(producerOffers);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading listings from ledger:", error);
       }
-    } else {
-      // Fallback: try old sellerListings for backward compatibility
-      const savedListings = localStorage.getItem("sellerListings");
-      if (savedListings) {
+      */
+
+      // Fallback: Load from localStorage
+      const marketplaceListings = localStorage.getItem("marketplaceListings");
+      
+      if (marketplaceListings) {
         try {
-          const listings = JSON.parse(savedListings);
-          const transportOffers = listings
+          const allListings = JSON.parse(marketplaceListings);
+          
+          // Convert ALL public listings to offers for producer
+          // Producers can see all listings from all sellers
+          const producerOffers = allListings
             .filter(listing => 
-              listing.status === "producer-validated" || 
-              listing.status === "producer-transporter-validated" ||
-              listing.status === "transport-accepted" ||
-              listing.status === "in-transit" ||
-              listing.status === "completed"
+              listing.isPublic !== false && // Only public listings
+              (listing.status === "pending" || 
+               listing.status === "producer-validated" ||
+               listing.status === "producer-transporter-validated" ||
+               listing.status === "cancelled") // Show cancelled to see history
             )
             .map(listing => ({
               id: listing.id,
@@ -132,35 +145,64 @@ export default function TransporterPage() {
               lotNumber: listing.lotNumber,
               price: listing.price,
               pricePerKg: listing.pricePerKg,
-              labo: listing.labo,
-              distance: Math.floor(Math.random() * 500) + 50,
-              transportPrice: (Math.random() * 10 + 5).toFixed(2),
-              sellerValidated: true,
-              producerValidated: listing.status !== "pending",
-              producerValidation: listing.producerValidation,
-              transporterValidation: listing.transporterValidation,
+              certificateUrl: listing.certificateUrl,
+              certificateType: listing.certificateType || null,
               sellerAddress: listing.sellerAddress || "unknown",
               sellerName: listing.sellerName || "Seller",
-              status: listing.status === "producer-validated" 
-                ? "ready-for-transport"
-                : listing.status === "producer-transporter-validated"
-                ? "ready-for-transport"
-                : listing.status === "transport-accepted"
-                ? "transport-accepted"
-                : listing.status === "in-transit"
-                ? "in-transit"
-                : listing.status === "completed"
-                ? "completed"
-                : "ready-for-transport",
-              createdAt: listing.createdAt
+              labo: listing.labo,
+              nftTokenId: listing.nftTokenId || null,
+              status: listing.status === "pending" ? "pending" : 
+                     listing.status === "producer-validated" ? "accepted" :
+                     listing.status === "cancelled" ? "rejected" : "accepted",
+              createdAt: listing.createdAt,
+              producerValidation: listing.producerValidation,
+              traceabilityInfo: listing.traceabilityInfo || null
             }));
-          setOffers(transportOffers);
+          
+          setOffers(producerOffers);
         } catch (e) {
-          console.error("Error loading transport offers:", e);
+          console.error("Error loading marketplace listings:", e);
+        }
+      } else {
+        // Fallback: try old sellerListings for backward compatibility
+        const savedListings = localStorage.getItem("sellerListings");
+        if (savedListings) {
+          try {
+            const listings = JSON.parse(savedListings);
+            const producerOffers = listings
+              .filter(listing => 
+                listing.status === "pending" || 
+                listing.status === "producer-validated" ||
+                listing.status === "producer-transporter-validated"
+              )
+              .map(listing => ({
+                id: listing.id,
+                productType: listing.productType,
+                weight: listing.weight,
+                date: listing.date,
+                lotNumber: listing.lotNumber,
+                price: listing.price,
+                pricePerKg: listing.pricePerKg,
+                certificateUrl: listing.certificateUrl,
+                certificateType: listing.certificateType || null,
+                sellerAddress: listing.sellerAddress || "unknown",
+                sellerName: listing.sellerName || "Seller",
+                labo: listing.labo,
+                status: listing.status === "pending" ? "pending" : "accepted",
+                createdAt: listing.createdAt,
+                producerValidation: listing.producerValidation,
+                traceabilityInfo: listing.traceabilityInfo || null
+              }));
+            setOffers(producerOffers);
+          } catch (e) {
+            console.error("Error loading offers:", e);
+          }
         }
       }
-    }
-  }, []);
+    };
+
+    loadListings();
+  }, [accountInfo]);
 
   const handleAcceptOffer = (offer) => {
     setSelectedOffer(offer);
@@ -189,8 +231,8 @@ export default function TransporterPage() {
             if (listing.id === offerId) {
               return {
                 ...listing,
-                status: action === "accept" ? "producer-transporter-validated" : "cancelled",
-                transporterValidation: {
+                status: action === "accept" ? "producer-validated" : "cancelled",
+                producerValidation: {
                   status: action === "accept" ? "accepted" : "rejected",
                   reason: reason || null,
                   date: new Date().toISOString()
@@ -207,8 +249,8 @@ export default function TransporterPage() {
             if (offer.id === offerId) {
               return {
                 ...offer,
-                status: action === "accept" ? "transport-accepted" : "rejected",
-                transporterValidation: {
+                status: action === "accept" ? "accepted" : "rejected",
+                producerValidation: {
                   status: action === "accept" ? "accepted" : "rejected",
                   reason: reason || null,
                   date: new Date().toISOString()
@@ -226,10 +268,10 @@ export default function TransporterPage() {
       setShowAcceptRejectModal(false);
       setSelectedOffer(null);
       setActionType(null);
-      alert(`Transport ${action === "accept" ? "accepted" : "rejected"} successfully!`);
+      alert(`Offer ${action === "accept" ? "accepted" : "rejected"} successfully!`);
     } catch (error) {
-      console.error("Error processing transport offer:", error);
-      alert(`Failed to ${action} transport. Please try again.`);
+      console.error("Error processing offer:", error);
+      alert(`Failed to ${action} offer. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -241,7 +283,7 @@ export default function TransporterPage() {
   };
 
   if (!canAccess) {
-    const TransporterIcon = () => (
+    const ProducerIcon = () => (
       <svg className="w-12 h-12 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
@@ -285,17 +327,17 @@ export default function TransporterPage() {
         </div>
         <div className="relative z-10">
           <WalletConnectionScreen
-            title="Transporter Dashboard"
-            subtitle="Certified Logistics"
-            description="Accept and manage transport missions on the XRPL blockchain. Validate deliveries, maintain product traceability, and ensure the integrity of the supply chain from origin to destination."
+            title="Producer Dashboard"
+            subtitle="Agricultural Validator"
+            description="Validate and certify product listings from sellers on the XRPL blockchain. Review certificates, verify authenticity, and approve listings for the marketplace."
             features={[
-              "View transport-ready listings",
-              "Accept or reject transport missions",
-              "Track delivery status",
-              "Maintain complete traceability",
-              "Validate product integrity"
+              "View all seller listings in the marketplace",
+              "Review product certificates and details",
+              "Accept or reject offers with reasons",
+              "Track validation history",
+              "Maintain product quality standards"
             ]}
-            icon={TransporterIcon}
+            icon={ProducerIcon}
           />
         </div>
       </div>
@@ -353,12 +395,12 @@ export default function TransporterPage() {
             animate={{ y: 0, opacity: 1 }}
             className="mb-8"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Transporter Dashboard</h1>
-            <p className="text-purple-400 text-lg font-medium">Accept and manage transport missions</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Producer Dashboard</h1>
+            <p className="text-emerald-400 text-lg font-medium">Validate and certify product listings</p>
           </motion.div>
 
           {/* Offers List */}
-          <TransporterOffersList
+          <ProducerOffersList
             offers={offers}
             onView={handleViewDetails}
             onAccept={handleAcceptOffer}
@@ -370,7 +412,7 @@ export default function TransporterPage() {
       {/* Modals */}
       <AnimatePresence>
         {showDetails && selectedOffer && (
-          <TransporterOfferDetails
+          <ProducerOfferDetails
             offer={selectedOffer}
             onClose={() => {
               setShowDetails(false);
@@ -381,7 +423,7 @@ export default function TransporterPage() {
           />
         )}
         {showAcceptRejectModal && selectedOffer && (
-          <TransporterAcceptRejectModal
+          <ProducerAcceptRejectModal
             offer={selectedOffer}
             action={actionType}
             onClose={() => {

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,11 +8,45 @@
   body {
     @apply text-white bg-[#0a0a0f];
     overflow-x: hidden;
+    font-family: 'Work Sans', sans-serif;
   }
 
   html {
     scroll-behavior: smooth;
     background-color: #0a0a0f;
+    font-family: 'Work Sans', sans-serif;
+  }
+
+  * {
+    font-family: 'Work Sans', sans-serif;
+  }
+
+  /* Hide number input arrows */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /* Style date picker calendar icon */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
+
+  /* Make date picker more visible */
+  input[type="date"] {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    background-color: white;
+    border-radius: 4px;
+    padding: 2px;
   }
 }
 

@@ -1,85 +1,94 @@
 /**
- * Configuration des Verifiable Credentials (VC) pour CertiChain
+ * Verifiable Credentials (VC) configuration for CertiChain
  * 
- * Ce fichier définit les types de credentials utilisés pour le contrôle d'accès
- * et les mappings vers les routes protégées.
+ * This file defines the credential types used for access control
+ * and mappings to protected routes.
  */
 
-// L'adresse de l'issuer (votre plateforme) qui émet les credentials
-// Cette adresse doit être configurée via variable d'environnement en production
+// The issuer address (your platform) that issues credentials
+// This address must be configured via environment variable in production
 export const ISSUER_ADDRESS = process.env.NEXT_PUBLIC_ISSUER_ADDRESS || "rISSUER_ADDRESS_HERE";
 
-// Types de credentials disponibles
-// Ces identifiants sont utilisés sur le ledger XRPL
+// Types of credentials available
+// These identifiers are used on the XRPL ledger
 export const CREDENTIAL_TYPES = {
   BUYER: "CERTICHAIN_BUYER",
   SELLER: "CERTICHAIN_SELLER", 
+  PRODUCER: "CERTICHAIN_PRODUCER",
   LABO: "CERTICHAIN_LABO",
   TRANSPORTER: "CERTICHAIN_TRANSPORTER",
 };
 
-// Mapping des credentials vers les routes autorisées
+// Mapping of credentials to authorized routes
 export const CREDENTIAL_ROUTES = {
   [CREDENTIAL_TYPES.BUYER]: ["/buyer"],
   [CREDENTIAL_TYPES.SELLER]: ["/seller"],
+  [CREDENTIAL_TYPES.PRODUCER]: ["/producer"],
   [CREDENTIAL_TYPES.LABO]: ["/labo"],
   [CREDENTIAL_TYPES.TRANSPORTER]: ["/transporter"],
 };
 
-// Mapping inverse : route → credential requis
+// Inverse mapping: route → required credential
 export const ROUTE_CREDENTIALS = {
   "/buyer": CREDENTIAL_TYPES.BUYER,
   "/seller": CREDENTIAL_TYPES.SELLER,
+  "/producer": CREDENTIAL_TYPES.PRODUCER,
   "/labo": CREDENTIAL_TYPES.LABO,
   "/transporter": CREDENTIAL_TYPES.TRANSPORTER,
 };
 
-// Informations affichées pour chaque type de credential
+// Information displayed for each credential type
 export const CREDENTIAL_INFO = {
   [CREDENTIAL_TYPES.BUYER]: {
     name: "Buyer",
-    description: "Accès acheteur - Permet d'acheter des produits certifiés",
+    description: "Buyer access - Allows purchasing certified products",
     color: "blue",
     icon: "🛒",
   },
   [CREDENTIAL_TYPES.SELLER]: {
     name: "Seller", 
-    description: "Accès vendeur - Permet de certifier et vendre des produits",
+    description: "Seller access - Allows certifying and selling products",
     color: "emerald",
     icon: "🌾",
   },
+  [CREDENTIAL_TYPES.PRODUCER]: {
+    name: "Producer",
+    description: "Producer access - Allows validating and certifying product listings",
+    color: "green",
+    icon: "🌱",
+  },
   [CREDENTIAL_TYPES.LABO]: {
     name: "Laboratory",
-    description: "Accès laboratoire - Permet de valider et analyser des produits",
+    description: "Laboratory access - Allows validating and analyzing products",
     color: "amber",
     icon: "🔬",
   },
   [CREDENTIAL_TYPES.TRANSPORTER]: {
     name: "Transporter",
-    description: "Accès transporteur - Permet de gérer les livraisons",
+    description: "Transporter access - Allows managing deliveries",
     color: "purple", 
     icon: "🚚",
   },
 };
 
-// Fonction utilitaire pour obtenir le credential requis pour une route
+// Utility function to get the required credential for a route
 export function getRequiredCredential(pathname) {
-  // Vérifie les routes exactes
+  // Check exact routes
   if (ROUTE_CREDENTIALS[pathname]) {
     return ROUTE_CREDENTIALS[pathname];
   }
   
-  // Vérifie les sous-routes (ex: /buyer/orders → BUYER)
+  // Check sub-routes (e.g., /buyer/orders → BUYER)
   for (const [route, credential] of Object.entries(ROUTE_CREDENTIALS)) {
     if (pathname.startsWith(route + "/") || pathname === route) {
       return credential;
     }
   }
   
-  return null; // Pas de credential requis (route publique)
+  return null; // No credential required (public route)
 }
 
-// Fonction pour vérifier si une route nécessite un credential
+// Function to check if a route requires a credential
 export function isProtectedRoute(pathname) {
   return getRequiredCredential(pathname) !== null;
 }
