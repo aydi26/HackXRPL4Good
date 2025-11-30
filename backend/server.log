@@ -1,0 +1,7 @@
+[dotenv@17.2.3] injecting env (10) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+📋 PINATA_JWT loaded: ✓ Yes
+📋 PINATA_GATEWAY: https://gateway.pinata.cloud
+🚀 Server running on http://localhost:3001
+📤 Upload JSON: test-upload
+✅ JSON uploadé: bafkreihbmtavx2pe3amg57e4eqm6gebp2qwvqmyzsxvfbccppiqyg3743a
