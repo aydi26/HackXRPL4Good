@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCredentialContext } from "./providers/CredentialProvider";
 import { CREDENTIAL_INFO, CREDENTIAL_TYPES, ISSUER_ADDRESS } from "../lib/credentials";
+import { BYPASS_CREDENTIAL_CHECK } from "../lib/credentialConfig";
 
 // Debug log
 const DEBUG = true;
@@ -44,6 +45,12 @@ export function ProtectedRoute({
   // Normalize credential type
   const credentialType = CREDENTIAL_TYPES[requiredCredential.toUpperCase()] || requiredCredential;
   const credentialInfo = CREDENTIAL_INFO[credentialType];
+
+  // BYPASS: If bypass is enabled, grant access immediately
+  if (BYPASS_CREDENTIAL_CHECK) {
+    log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - granting access");
+    return <>{children}</>;
+  }
 
   // Check access
   const hasAccess = hasCredential(credentialType);

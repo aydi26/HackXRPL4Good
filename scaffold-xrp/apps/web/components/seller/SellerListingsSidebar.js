@@ -30,7 +30,7 @@ export default function SellerListingsSidebar({ listings, onView, onEdit, onDele
     >
       {/* Header */}
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-white mb-4">My Listings</h2>
+        <h2 className="text-xl font-bold text-white/50 mb-4">My Listings</h2>
 
         {/* Status Filter */}
         <select

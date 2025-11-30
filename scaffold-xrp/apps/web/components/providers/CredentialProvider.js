@@ -15,6 +15,7 @@ import {
   disconnectClient 
 } from "../../lib/xrplCredentialService";
 import { CREDENTIAL_TYPES, CREDENTIAL_INFO, ISSUER_ADDRESS } from "../../lib/credentials";
+import { BYPASS_CREDENTIAL_CHECK } from "../../lib/credentialConfig";
 
 // Debug log function
 const DEBUG = true;
@@ -78,6 +79,30 @@ export function CredentialProvider({ children }) {
    */
   const fetchCredentials = useCallback(async (forceRefresh = false) => {
     log("fetchCredentials called - walletAddress:", walletAddress, "forceRefresh:", forceRefresh);
+    
+    // BYPASS: If bypass is enabled, grant all credentials
+    if (BYPASS_CREDENTIAL_CHECK) {
+      log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - granting all credentials");
+      const bypassAccessMap = {
+        [CREDENTIAL_TYPES.BUYER]: true,
+        [CREDENTIAL_TYPES.SELLER]: true,
+        [CREDENTIAL_TYPES.PRODUCER]: true,
+        [CREDENTIAL_TYPES.LABO]: true,
+        [CREDENTIAL_TYPES.TRANSPORTER]: true,
+      };
+      setCredentials([]);
+      setAccessMap(bypassAccessMap);
+      setIsLoading(false);
+      setIsInitialized(true);
+      // Update cache
+      credentialsCache = {
+        walletAddress: walletAddress || null,
+        accessMap: bypassAccessMap,
+        credentials: [],
+        timestamp: Date.now(),
+      };
+      return;
+    }
     
     if (!walletAddress) {
       log("No wallet address, resetting credentials");
@@ -189,6 +214,11 @@ export function CredentialProvider({ children }) {
    */
   const hasCredential = useCallback(
     (credentialType) => {
+      // BYPASS: If bypass is enabled, always return true
+      if (BYPASS_CREDENTIAL_CHECK) {
+        log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - hasCredential returning true for:", credentialType);
+        return true;
+      }
       const result = accessMap[credentialType] === true;
       log("hasCredential check:", credentialType, "=", result);
       return result;

@@ -100,7 +100,7 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8"
     >
-      <h2 className="text-2xl font-bold text-white mb-6">Create New Listing</h2>
+      <h2 className="text-2xl font-bold text-white/50 mb-6">Create New Listing</h2>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Product Type */}
@@ -150,16 +150,13 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
             Date <span className="text-emerald-400">*</span>
           </label>
           <input
-            type="date"
+            type="text"
             name="date"
             value={formData.date}
             onChange={handleChange}
-            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent [color-scheme:dark]"
-            style={{ 
-              colorScheme: 'dark',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              color: 'white'
-            }}
+            placeholder="YYYY-MM-DD"
+            pattern="\d{4}-\d{2}-\d{2}"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
           {errors.date && (
             <p className="text-red-400 text-sm mt-1">{errors.date}</p>
@@ -241,13 +238,30 @@ export default function SellerCreateListingForm({ onSubmit, isLoading }) {
             Certificate <span className="text-emerald-400">*</span>
           </label>
           <div className="space-y-3">
-            <input
-              type="file"
-              name="certificate"
-              accept="image/*,application/pdf"
-              onChange={handleChange}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 file:cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
+            <label className="block">
+              <input
+                type="file"
+                name="certificate"
+                accept="image/*,application/pdf"
+                onChange={handleChange}
+                className="hidden"
+              />
+              <div className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white cursor-pointer hover:bg-white/10 transition-colors focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
+                <span className="inline-block px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-semibold hover:bg-emerald-500/30 transition-colors">
+                  Choose a file
+                </span>
+                {formData.certificate && (
+                  <span className="ml-4 text-white/80 text-sm">
+                    {formData.certificate.name}
+                  </span>
+                )}
+                {!formData.certificate && (
+                  <span className="ml-4 text-white/40 text-sm">
+                    No file chosen
+                  </span>
+                )}
+              </div>
+            </label>
             {certificatePreview && (
               <div className="mt-3">
                 {certificatePreview === "pdf" ? (

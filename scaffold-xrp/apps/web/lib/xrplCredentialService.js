@@ -8,6 +8,7 @@
 import { Client } from "xrpl";
 import { DEFAULT_NETWORK } from "./networks";
 import { ISSUER_ADDRESS, CREDENTIAL_TYPES } from "./credentials";
+import { BYPASS_CREDENTIAL_CHECK } from "./credentialConfig";
 
 // Client XRPL singleton
 let xrplClient = null;
@@ -125,6 +126,21 @@ export async function checkCredential(walletAddress, credentialType, issuer = IS
   log("Credential Type:", credentialType);
   log("Issuer configuré:", issuer);
   
+  // BYPASS: If bypass is enabled, always return true
+  if (BYPASS_CREDENTIAL_CHECK) {
+    log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - checkCredential returning true");
+    return {
+      hasCredential: true,
+      credential: {
+        type: credentialType,
+        subject: walletAddress,
+        issuer: issuer,
+        bypassed: true,
+      },
+      error: null,
+    };
+  }
+  
   try {
     const client = await getClient();
     
@@ -229,6 +245,15 @@ export async function checkCredential(walletAddress, credentialType, issuer = IS
  * @returns {Promise<{credentials: object[], error: string|null}>}
  */
 export async function getUserCredentials(walletAddress, issuer = ISSUER_ADDRESS) {
+  // BYPASS: If bypass is enabled, return empty array (credentials not needed when bypassed)
+  if (BYPASS_CREDENTIAL_CHECK) {
+    log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - getUserCredentials returning empty array");
+    return {
+      credentials: [],
+      error: null,
+    };
+  }
+  
   try {
     const client = await getClient();
     
@@ -302,6 +327,16 @@ export async function getUserCredentials(walletAddress, issuer = ISSUER_ADDRESS)
  * @returns {Promise<{hasAccess: boolean, credential: object|null, error: string|null}>}
  */
 export async function checkRouteAccess(walletAddress, pathname) {
+  // BYPASS: If bypass is enabled, always grant access
+  if (BYPASS_CREDENTIAL_CHECK) {
+    log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - checkRouteAccess returning true");
+    return {
+      hasAccess: true,
+      credential: null,
+      error: null,
+    };
+  }
+  
   const { getRequiredCredential } = await import("./credentials");
   
   const requiredCredential = getRequiredCredential(pathname);
@@ -333,6 +368,13 @@ export async function checkRouteAccess(walletAddress, pathname) {
  * @returns {Promise<{[key: string]: boolean}>} Map des accès par type
  */
 export async function checkAllCredentials(walletAddress) {
+  // BYPASS: If bypass is enabled, return all credentials as true
+  if (BYPASS_CREDENTIAL_CHECK) {
+    log("⚠️ BYPASS_CREDENTIAL_CHECK is enabled - checkAllCredentials returning all true");
+    const types = Object.values(CREDENTIAL_TYPES);
+    return Object.fromEntries(types.map(type => [type, true]));
+  }
+  
   const types = Object.values(CREDENTIAL_TYPES);
   
   const results = await Promise.all(
