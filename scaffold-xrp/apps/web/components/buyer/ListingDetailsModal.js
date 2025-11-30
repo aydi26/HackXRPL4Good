@@ -159,13 +159,34 @@ export default function ListingDetailsModal({ listing, onClose, onBuy }) {
                   <span className="text-white/40 text-xs">NFT Token ID</span>
                   <p className="text-white/80 text-sm font-mono break-all">{listing.nftId}</p>
                 </div>
-                {listing.taxon && (
+                {listing.taxon !== undefined && (
                   <div>
                     <span className="text-white/40 text-xs">Category Taxon</span>
                     <p className="text-white/80 text-sm">{listing.taxon}</p>
                   </div>
                 )}
+                {listing.uri && (
+                  <div>
+                    <span className="text-white/40 text-xs">Metadata URI</span>
+                    <p className="text-white/80 text-sm font-mono break-all">{listing.uri}</p>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* Raw Metadata (Debug) */}
+          {listing.rawMetadata && Object.keys(listing.rawMetadata).length > 0 && (
+            <div className="bg-gray-500/10 border border-gray-500/20 rounded-xl p-4 mb-6">
+              <h3 className="text-gray-300 text-sm mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                Raw Metadata
+              </h3>
+              <pre className="text-white/60 text-xs font-mono overflow-x-auto whitespace-pre-wrap bg-black/30 p-3 rounded-lg max-h-48 overflow-y-auto">
+                {JSON.stringify(listing.rawMetadata, null, 2)}
+              </pre>
             </div>
           )}
 

@@ -86,6 +86,22 @@ export default function MarketplaceListingCard({ listing, onView, onBuy }) {
           {listing.productType}
         </h3>
 
+        {/* Description if available */}
+        {listing.description && (
+          <p className="text-white/60 text-sm mb-3 line-clamp-2">
+            {listing.description}
+          </p>
+        )}
+
+        {/* NFT URI Debug Info */}
+        {listing.uri && (
+          <div className="mb-3 p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <p className="text-purple-300 text-xs font-mono break-all">
+              URI: {listing.uri.length > 60 ? listing.uri.slice(0, 60) + "..." : listing.uri}
+            </p>
+          </div>
+        )}
+
         {/* Details Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
           <div>

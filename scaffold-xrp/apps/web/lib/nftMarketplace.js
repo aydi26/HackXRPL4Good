@@ -53,26 +53,91 @@ export function stringToHex(str) {
 }
 
 /**
- * Fetch metadata from IPFS or HTTP URI
+ * Fetch metadata from IPFS, HTTP URI, or parse inline JSON/data
  */
 async function fetchMetadata(uri) {
+  if (!uri) return null;
+  
   try {
+    console.log("Fetching metadata from URI:", uri);
+    
+    // Check if URI is already JSON data (inline metadata)
+    if (uri.startsWith("{")) {
+      try {
+        return JSON.parse(uri);
+      } catch (e) {
+        console.log("URI looks like JSON but failed to parse");
+      }
+    }
+    
+    // Check if it's a data URI (base64 encoded JSON)
+    if (uri.startsWith("data:application/json")) {
+      try {
+        const base64Data = uri.split(",")[1];
+        const jsonString = atob(base64Data);
+        return JSON.parse(jsonString);
+      } catch (e) {
+        console.log("Failed to parse data URI:", e);
+      }
+    }
+    
     // Handle IPFS URIs
     let fetchUrl = uri;
     if (uri.startsWith("ipfs://")) {
-      // Use public IPFS gateway
-      fetchUrl = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
+      // Try multiple IPFS gateways
+      const gateways = [
+        "https://ipfs.io/ipfs/",
+        "https://gateway.pinata.cloud/ipfs/",
+        "https://cloudflare-ipfs.com/ipfs/",
+        "https://dweb.link/ipfs/"
+      ];
+      const cid = uri.replace("ipfs://", "");
+      
+      for (const gateway of gateways) {
+        try {
+          const response = await fetch(gateway + cid, {
+            signal: AbortSignal.timeout(5000),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Metadata fetched from IPFS:", data);
+            return data;
+          }
+        } catch (e) {
+          console.log(`Gateway ${gateway} failed, trying next...`);
+        }
+      }
+      return null;
     }
     
-    const response = await fetch(fetchUrl, {
-      timeout: 10000, // 10 second timeout
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Handle HTTP/HTTPS URLs
+    if (uri.startsWith("http://") || uri.startsWith("https://")) {
+      const response = await fetch(fetchUrl, {
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Metadata fetched from HTTP:", data);
+      return data;
     }
     
-    return await response.json();
+    // Try to parse as raw JSON string (sometimes URIs contain escaped JSON)
+    try {
+      const decoded = decodeURIComponent(uri);
+      if (decoded.startsWith("{")) {
+        return JSON.parse(decoded);
+      }
+    } catch (e) {
+      // Not URL-encoded JSON
+    }
+    
+    console.log("Unknown URI format, cannot fetch metadata:", uri);
+    return null;
+    
   } catch (error) {
     console.error("Error fetching metadata from", uri, error);
     return null;
@@ -81,37 +146,117 @@ async function fetchMetadata(uri) {
 
 /**
  * Parse NFT data and extract listing information
+ * Handles various metadata formats from different NFT standards
+ * 
+ * Short keys mapping (for compact on-chain storage):
+ * - p: productType/title
+ * - w: weight
+ * - d: date
+ * - l: lieu/location/labo
+ * - n: numéro de lot (lot number)
  */
 function parseNFTToListing(nft, metadata, sellerAddress) {
+  // Try to extract values from various possible field names (including short keys)
+  const getName = () => {
+    return metadata?.p           // Short key: product/title
+      || metadata?.productType 
+      || metadata?.name 
+      || metadata?.title 
+      || metadata?.product 
+      || metadata?.description?.slice(0, 50)
+      || "Product NFT";
+  };
+  
+  const getWeight = () => {
+    const w = metadata?.w        // Short key: weight
+      || metadata?.weight 
+      || metadata?.quantity 
+      || metadata?.amount;
+    return w ? String(w) : "N/A";
+  };
+  
+  const getDate = () => {
+    return metadata?.d           // Short key: date
+      || metadata?.date 
+      || metadata?.createdAt 
+      || metadata?.timestamp 
+      || metadata?.mintDate 
+      || new Date().toISOString();
+  };
+  
+  const getLabo = () => {
+    return metadata?.l           // Short key: lieu/location/labo
+      || metadata?.labo 
+      || metadata?.laboratory 
+      || metadata?.lab 
+      || metadata?.lieu
+      || metadata?.location
+      || metadata?.certifier 
+      || "Not specified";
+  };
+  
+  const getLotNumber = () => {
+    return metadata?.n           // Short key: numéro de lot
+      || metadata?.lotNumber 
+      || metadata?.lot 
+      || metadata?.batchNumber 
+      || metadata?.batch 
+      || "N/A";
+  };
+  
+  const getPrice = () => {
+    const p = metadata?.price || metadata?.cost || metadata?.value || metadata?.pr;
+    return p ? String(p) : "0";
+  };
+  
+  const getPricePerKg = () => {
+    const p = metadata?.pricePerKg || metadata?.unitPrice || metadata?.pricePerUnit || metadata?.ppk;
+    return p ? String(p) : "0";
+  };
+  
+  const getImage = () => {
+    return metadata?.certificate 
+      || metadata?.image 
+      || metadata?.img 
+      || metadata?.i              // Short key: image
+      || metadata?.thumbnail 
+      || metadata?.media 
+      || metadata?.picture
+      || metadata?.c              // Short key: certificate
+      || null;
+  };
+
   return {
     // NFT identification
     nftId: nft.NFTokenID,
     taxon: nft.NFTokenTaxon,
     issuer: nft.Issuer,
+    uri: nft.URI ? hexToString(nft.URI) : null,
     
     // Product information from metadata
-    productType: metadata?.productType || metadata?.name || "Unknown Product",
-    weight: metadata?.weight || "N/A",
-    price: metadata?.price || "0",
-    pricePerKg: metadata?.pricePerKg || "0",
-    lotNumber: metadata?.lotNumber || "N/A",
-    date: metadata?.date || metadata?.createdAt || new Date().toISOString(),
-    labo: metadata?.labo || "Not specified",
+    productType: getName(),
+    weight: getWeight(),
+    price: getPrice(),
+    pricePerKg: getPricePerKg(),
+    lotNumber: getLotNumber(),
+    date: getDate(),
+    labo: getLabo(),
+    description: metadata?.description || metadata?.desc || metadata?.de || "",
     
     // Seller information
     sellerAddress: sellerAddress,
-    sellerName: metadata?.sellerName || "Verified Seller",
+    sellerName: metadata?.sellerName || metadata?.seller || metadata?.producer || metadata?.vendor || metadata?.s || "Verified Seller",
     
     // Certificate/Image
-    certificateUrl: metadata?.certificate || metadata?.image || null,
-    certificateType: metadata?.certificateType || "image",
+    certificateUrl: getImage(),
+    certificateType: metadata?.certificateType || (getImage()?.includes(".pdf") ? "pdf" : "image"),
     
     // Status
-    status: metadata?.status || "available",
+    status: metadata?.status || metadata?.st || "available",
     isPublic: true,
     
     // Timestamps
-    createdAt: metadata?.createdAt || new Date().toISOString(),
+    createdAt: metadata?.createdAt || metadata?.timestamp || new Date().toISOString(),
     
     // Original metadata for reference
     rawMetadata: metadata,
@@ -227,34 +372,59 @@ async function fetchSellerNFTs(sellerAddress, client) {
     const nfts = response.result.account_nfts;
     console.log(`Found ${nfts.length} NFTs for seller ${sellerAddress}`);
     
+    // Log raw NFT data for debugging
+    nfts.forEach((nft, idx) => {
+      console.log(`NFT ${idx + 1}:`, {
+        NFTokenID: nft.NFTokenID,
+        URI_hex: nft.URI,
+        URI_decoded: nft.URI ? hexToString(nft.URI) : null,
+        Taxon: nft.NFTokenTaxon,
+        Issuer: nft.Issuer,
+      });
+    });
+    
     // Fetch metadata for each NFT
     const listings = await Promise.all(
       nfts.map(async (nft) => {
         try {
           // Decode URI from hex
-          const uri = hexToString(nft.URI);
+          const uri = nft.URI ? hexToString(nft.URI) : null;
           
-          if (!uri) {
-            // NFT without URI - create basic listing
-            return parseNFTToListing(nft, {
-              productType: "Product #" + nft.NFTokenID.slice(-8),
-              status: "available",
-            }, sellerAddress);
+          console.log("Processing NFT:", nft.NFTokenID);
+          console.log("  Raw URI (hex):", nft.URI);
+          console.log("  Decoded URI:", uri);
+          
+          let metadata = null;
+          
+          if (uri) {
+            // Try to fetch/parse metadata
+            metadata = await fetchMetadata(uri);
+            console.log("  Fetched metadata:", metadata);
           }
           
-          console.log("NFT URI:", uri);
+          // If no metadata, create listing with raw NFT data
+          if (!metadata) {
+            console.log("  No metadata found, using defaults");
+            metadata = {
+              productType: "Product NFT",
+              name: "NFT #" + nft.NFTokenID.slice(-8),
+              status: "available",
+            };
+          }
           
-          // Fetch metadata from URI
-          const metadata = await fetchMetadata(uri);
+          const listing = parseNFTToListing(nft, metadata, sellerAddress);
+          console.log("  Created listing:", listing);
           
-          return parseNFTToListing(nft, metadata || {
-            productType: "Product #" + nft.NFTokenID.slice(-8),
-            status: "available",
-          }, sellerAddress);
+          return listing;
           
         } catch (error) {
           console.error("Error processing NFT:", nft.NFTokenID, error);
-          return null;
+          // Return a basic listing even on error
+          return parseNFTToListing(nft, {
+            productType: "Product NFT",
+            name: "NFT #" + nft.NFTokenID.slice(-8),
+            status: "available",
+          }, sellerAddress);
         }
       })
     );
