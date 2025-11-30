@@ -1,47 +1,21 @@
+# ----------------------------------------------------------------------
 # Dependencies
+# ----------------------------------------------------------------------
 node_modules/
+.pnp
+.pnp.js
 .pnpm-store/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-*.env
-
-# Build outputs
-dist/
+# ----------------------------------------------------------------------
+# Build outputs / Production / Temporary
+# ----------------------------------------------------------------------
+# Build / Front-end Specific
 build/
+dist/
 .next/
 out/
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-server.log
-
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-Thumbs.db
-
-# IDE / Editor
-.idea/
-.vscode/
-*.swp
-*.swo
-*.sublime-workspace
-*.sublime-project
-
-# Testing
-coverage/
-.nyc_output/
+.vercel/
+.turbo/
 
 # Temporary files
 tmp/
@@ -49,27 +23,66 @@ temp/
 *.tmp
 *.temp
 
-# XRPL / Crypto specific
+# ----------------------------------------------------------------------
+# Environment variables and Sensitive Data (CRUCIAL)
+# ----------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.env
+# Private keys and sensitive data
+*.key
+*.pem
+wallet.json
 *.secret
 *_secret.json
-wallet*.json
-!wallet.example.json
+!wallet.example.json # Exception pour un fichier d'exemple si besoin
 
-# Python (if backend uses Python)
+# ----------------------------------------------------------------------
+# Logs
+# ----------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+server.log
+
+# ----------------------------------------------------------------------
+# Testing
+# ----------------------------------------------------------------------
+coverage/
+.nyc_output/
+
+# ----------------------------------------------------------------------
+# IDE / Editor / OS
+# ----------------------------------------------------------------------
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Python (pour le backend)
 __pycache__/
 *.py[cod]
 *$py.class
 .Python
 venv/
 .venv/
-
-# Turbo
-.turbo/
-
-# Vercel
-.vercel/
-
-# Debug
-*.pid
-*.seed
-*.pid.lock
