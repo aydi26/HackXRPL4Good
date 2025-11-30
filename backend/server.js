@@ -8,6 +8,7 @@ const cors = require("cors");
 const { routes: credentialRoutes } = require("./credentials");
 const { routes: ipfsRoutes } = require("./ipfs");
 const mintRoutes = require("./Chiffrement/routes");
+const mptRoutes = require("./MPT/routes");
 
 const app = express();
 app.use(cors());
@@ -25,6 +26,9 @@ app.use("/api/ipfs", ipfsRoutes);
 
 // Routes Mint NFT
 app.use("/api/mint", mintRoutes);
+
+// Routes MPToken
+app.use("/api/mpt", mptRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

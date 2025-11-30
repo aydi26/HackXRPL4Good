@@ -14,6 +14,8 @@ import SellerListingsSidebar from "../../components/seller/SellerListingsSidebar
 import SellerListingDetails from "../../components/seller/SellerListingDetails";
 import SellerEditModal from "../../components/seller/SellerEditModal";
 import DeleteConfirmationModal from "../../components/seller/DeleteConfirmationModal";
+import SellerOffersNotification from "../../components/seller/SellerOffersNotification";
+import AcceptOfferModal from "../../components/seller/AcceptOfferModal";
 import { useWallet } from "../../components/providers/WalletProvider";
 import { useCredentialContext } from "../../components/providers/CredentialProvider";
 
@@ -32,6 +34,10 @@ export default function SellerPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(true);
+  
+  // Offer management state
+  const [selectedOffer, setSelectedOffer] = useState(null);
+  const [showAcceptOfferModal, setShowAcceptOfferModal] = useState(false);
 
   // Check credential access
   const hasSellerCredential = hasAccess("seller");
@@ -52,11 +58,11 @@ export default function SellerPage() {
       href: "/buyer"
     },
     {
-      label: "Labo",
-      description: "Validate products",
-      bgColor: "rgba(6, 182, 212, 0.6)",
-      textColor: "#ecfeff",
-      href: "/labo"
+      label: "Transporter",
+      description: "Deliver with traceability",
+      bgColor: "rgba(4, 120, 87, 0.6)",
+      textColor: "#ecfdf5",
+      href: "/transporter"
     }
   ];
 
@@ -411,6 +417,26 @@ export default function SellerPage() {
     setShowDetails(true);
   };
 
+  // Handle accepting an offer
+  const handleAcceptOffer = (offer) => {
+    console.log("📬 Accepting offer:", offer);
+    setSelectedOffer(offer);
+    setShowAcceptOfferModal(true);
+  };
+
+  // Handle viewing offer details
+  const handleViewOffer = (offer) => {
+    console.log("👁️ Viewing offer:", offer);
+    // Could open a details modal here
+    alert(`Offer Details:\n\nProduct: ${offer.productType}\nPrice: ${offer.offeredPrice} XRP\nBuyer: ${offer.buyerAddress}\nNFT ID: ${offer.nftId}`);
+  };
+
+  // Handle successful offer acceptance
+  const handleOfferAccepted = (acceptedOffer) => {
+    console.log("✅ Offer accepted:", acceptedOffer);
+    // Could update local state, refresh listings, etc.
+  };
+
   // STATE 1: Wallet manager not ready yet OR autoConnecting
   if (!isReady || isAutoConnecting) {
     return (
@@ -545,8 +571,14 @@ export default function SellerPage() {
         className="backdrop-blur-md"
       />
 
-      {/* Wallet Button */}
-      <div className="fixed top-[2em] right-[5%] z-[100]">
+      {/* Wallet Button & Notifications */}
+      <div className="fixed top-[2em] right-[5%] z-[100] flex items-center gap-3">
+        {/* Offers Notification */}
+        <SellerOffersNotification
+          sellerAddress={accountInfo?.address}
+          onAcceptOffer={handleAcceptOffer}
+          onViewOffer={handleViewOffer}
+        />
         <WalletButton />
       </div>
 
@@ -559,8 +591,12 @@ export default function SellerPage() {
             animate={{ y: 0, opacity: 1 }}
             className="mb-8"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Seller Dashboard</h1>
-            <p className="text-emerald-400 text-lg font-medium">Create and manage your product listings</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Seller Dashboard</h1>
+                <p className="text-emerald-400 text-lg font-medium">Create and manage your product listings</p>
+              </div>
+            </div>
           </motion.div>
 
           {/* Content Grid */}
@@ -622,6 +658,16 @@ export default function SellerPage() {
             }}
             onConfirm={handleConfirmDelete}
             isLoading={isLoading}
+          />
+        )}
+        {showAcceptOfferModal && selectedOffer && (
+          <AcceptOfferModal
+            offer={selectedOffer}
+            onClose={() => {
+              setShowAcceptOfferModal(false);
+              setSelectedOffer(null);
+            }}
+            onSuccess={handleOfferAccepted}
           />
         )}
       </AnimatePresence>

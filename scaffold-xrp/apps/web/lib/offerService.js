@@ -15,10 +15,18 @@ export const MEMO_TYPES = {
   OFFER: "CERTICHAIN_OFFER",
   OFFER_ACCEPT: "CERTICHAIN_OFFER_ACCEPT",
   OFFER_REJECT: "CERTICHAIN_OFFER_REJECT",
+  NFT_ID: "CERTICHAIN_NFT_ID",
 };
 
 /**
  * Create an offer transaction to send to a seller
+ * 
+ * The transaction includes:
+ * - 1 drop payment (minimal amount for valid tx)
+ * - Memo 1: Offer details (type, price, product, timestamp)
+ * - Memo 2: NFT ID (separate for easy extraction)
+ * 
+ * The seller can retrieve the buyer's address and public key from the transaction.
  * 
  * @param {Object} params - Offer parameters
  * @param {string} params.buyerAddress - Buyer's XRPL address
@@ -38,13 +46,14 @@ export function createOfferTransaction({
   // Create offer data to include in memo
   const offerData = {
     type: "OFFER",
-    nftId: nftId,
     price: offeredPrice,
     product: productType,
     timestamp: new Date().toISOString(),
   };
 
-  // Create the transaction
+  // Create the transaction with two memos:
+  // 1. Offer details (price, product, timestamp)
+  // 2. NFT ID (separate for easy extraction by seller)
   const tx = {
     TransactionType: "Payment",
     Account: buyerAddress,
@@ -55,6 +64,12 @@ export function createOfferTransaction({
         Memo: {
           MemoType: stringToHex(MEMO_TYPES.OFFER),
           MemoData: stringToHex(JSON.stringify(offerData)),
+        },
+      },
+      {
+        Memo: {
+          MemoType: stringToHex(MEMO_TYPES.NFT_ID),
+          MemoData: stringToHex(nftId || ""),
         },
       },
     ],
@@ -136,6 +151,7 @@ export async function fetchSentOffers(buyerAddress) {
     
     const offers = [];
     const offerMemoTypeHex = stringToHex(MEMO_TYPES.OFFER);
+    const nftIdMemoTypeHex = stringToHex(MEMO_TYPES.NFT_ID);
     
     for (const txData of response.result.transactions) {
       const tx = txData.tx || txData.transaction;
@@ -146,26 +162,37 @@ export async function fetchSentOffers(buyerAddress) {
       
       // Check for offer memo
       if (tx.Memos && tx.Memos.length > 0) {
-        const memo = tx.Memos[0].Memo;
+        let offerData = null;
+        let nftId = null;
         
-        if (memo.MemoType === offerMemoTypeHex) {
-          try {
-            const memoData = JSON.parse(hexToString(memo.MemoData));
-            
-            offers.push({
-              txHash: tx.hash,
-              buyerAddress: tx.Account,
-              sellerAddress: tx.Destination,
-              nftId: memoData.nftId,
-              offeredPrice: memoData.price,
-              productType: memoData.product,
-              timestamp: memoData.timestamp,
-              status: "pending", // TODO: Check for accept/reject response
-              validated: meta?.TransactionResult === "tesSUCCESS",
-            });
-          } catch (e) {
-            console.error("Error parsing offer memo:", e);
+        // Parse all memos
+        for (const memoWrapper of tx.Memos) {
+          const memo = memoWrapper.Memo;
+          
+          if (memo.MemoType === offerMemoTypeHex) {
+            try {
+              offerData = JSON.parse(hexToString(memo.MemoData));
+            } catch (e) {
+              console.error("Error parsing offer memo:", e);
+            }
+          } else if (memo.MemoType === nftIdMemoTypeHex) {
+            nftId = hexToString(memo.MemoData);
           }
+        }
+        
+        // If we found offer data, add to list
+        if (offerData) {
+          offers.push({
+            txHash: tx.hash,
+            buyerAddress: tx.Account,
+            sellerAddress: tx.Destination,
+            nftId: nftId || offerData.nftId, // Fallback to old format
+            offeredPrice: offerData.price,
+            productType: offerData.product,
+            timestamp: offerData.timestamp,
+            status: "pending", // TODO: Check for accept/reject response
+            validated: meta?.TransactionResult === "tesSUCCESS",
+          });
         }
       }
     }
@@ -185,6 +212,11 @@ export async function fetchSentOffers(buyerAddress) {
 
 /**
  * Fetch offers received by a seller (by scanning their incoming transactions)
+ * 
+ * Returns offers with:
+ * - buyerAddress: The buyer's XRPL address (from tx.Account)
+ * - buyerPublicKey: The buyer's public key (from tx.SigningPubKey)
+ * - nftId: The NFT being offered on (from memo)
  * 
  * @param {string} sellerAddress - Seller's XRPL address
  * @returns {Promise<Array>} Array of received offers with buyer public keys
@@ -207,6 +239,7 @@ export async function fetchReceivedOffers(sellerAddress) {
     
     const offers = [];
     const offerMemoTypeHex = stringToHex(MEMO_TYPES.OFFER);
+    const nftIdMemoTypeHex = stringToHex(MEMO_TYPES.NFT_ID);
     
     for (const txData of response.result.transactions) {
       const tx = txData.tx || txData.transaction;
@@ -217,27 +250,38 @@ export async function fetchReceivedOffers(sellerAddress) {
       
       // Check for offer memo
       if (tx.Memos && tx.Memos.length > 0) {
-        const memo = tx.Memos[0].Memo;
+        let offerData = null;
+        let nftId = null;
         
-        if (memo.MemoType === offerMemoTypeHex) {
-          try {
-            const memoData = JSON.parse(hexToString(memo.MemoData));
-            
-            offers.push({
-              txHash: tx.hash,
-              buyerAddress: tx.Account,
-              buyerPublicKey: tx.SigningPubKey, // ← The public key we need!
-              sellerAddress: tx.Destination,
-              nftId: memoData.nftId,
-              offeredPrice: memoData.price,
-              productType: memoData.product,
-              timestamp: memoData.timestamp,
-              status: "pending", // TODO: Check for accept/reject response
-              validated: meta?.TransactionResult === "tesSUCCESS",
-            });
-          } catch (e) {
-            console.error("Error parsing offer memo:", e);
+        // Parse all memos
+        for (const memoWrapper of tx.Memos) {
+          const memo = memoWrapper.Memo;
+          
+          if (memo.MemoType === offerMemoTypeHex) {
+            try {
+              offerData = JSON.parse(hexToString(memo.MemoData));
+            } catch (e) {
+              console.error("Error parsing offer memo:", e);
+            }
+          } else if (memo.MemoType === nftIdMemoTypeHex) {
+            nftId = hexToString(memo.MemoData);
           }
+        }
+        
+        // If we found offer data, add to list
+        if (offerData) {
+          offers.push({
+            txHash: tx.hash,
+            buyerAddress: tx.Account,                // ← Buyer's address
+            buyerPublicKey: tx.SigningPubKey,        // ← Buyer's public key for encryption
+            sellerAddress: tx.Destination,
+            nftId: nftId || offerData.nftId,         // NFT ID from dedicated memo or fallback
+            offeredPrice: offerData.price,
+            productType: offerData.product,
+            timestamp: offerData.timestamp,
+            status: "pending", // TODO: Check for accept/reject response
+            validated: meta?.TransactionResult === "tesSUCCESS",
+          });
         }
       }
     }
